@@ -1,7 +1,7 @@
 {
-  "name": "nasos",
+  "name": "nestos",
   "version": "0.1.0",
-  "description": "Network Attached Storage Operating System - A modern Debian-based NAS OS",
+  "description": "NestOS - A modern, user-friendly home server operating system",
   "private": true,
   "workspaces": [
     "packages/*"
@@ -21,5 +21,22 @@
     "concurrently": "^8.2.2",
     "turbo": "^1.11.3",
     "typescript": "^5.3.3"
-  }
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/nestos.git"
+  },
+  "keywords": [
+    "nas",
+    "home-server",
+    "docker",
+    "typescript",
+    "react",
+    "debian"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
 }

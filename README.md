@@ -1,99 +1,90 @@
-# NASOS
+# NestOS
 
-> ⚠️ **ACTIVE DEVELOPMENT**: This project is under heavy development and is not ready for production use. Breaking changes are expected.
+> 🏠 A modern, user-friendly home server operating system built with TypeScript and Debian
 
-A modern Network Attached Storage Operating System built with TypeScript and Debian.
+NestOS is designed to make home server management simple and beautiful. It provides an intuitive web interface for managing storage, containers, and network services, all while maintaining the power and flexibility of a Debian-based system.
 
-## Development Status
+## ✨ Features
 
-Currently implementing core features:
+- 🎨 Modern, intuitive web interface
+- 💾 Smart storage management
+- 🐳 Docker container orchestration
+- 🌐 Network service management
+- 📊 Real-time system monitoring
+- 🔒 Security-focused design
+- 🔄 Live system updates
+- 📱 Mobile-responsive interface
 
-- Storage Management (RAID, disk health)
-- Docker Integration
-- Web Interface
-- System Monitoring
-- Network Configuration
+## 🚧 Development Status
 
-## Quick Start
+> ⚠️ **Active Development**: NestOS is currently under heavy development and is not ready for production use. Features and APIs may change significantly.
+
+Current focus areas:
+- Core system architecture
+- Storage management
+- Docker integration
+- Network configuration
+- System monitoring
+
+## 🚀 Quick Start
 
 Prerequisites:
-
 - Node.js 20+
-- Git
-
-Optional (for full features):
-
 - Docker & Docker Compose
+- Git
 
 ```bash
 # Clone repository
-git clone https://github.com/moderniselife/nasos.git
-cd nasos
+git clone https://github.com/yourusername/nestos.git
+cd nestos
 
 # Setup development environment
 chmod +x setup.sh
 ./setup.sh
-```
 
-### Development Options
-
-1. Local Development (Limited Features):
-
-```bash
+# Start development environment
 npm run dev
-```
-
-2. Docker Development (Full Features):
-
-```bash
+# or with Docker
 npm run docker:dev
 ```
 
 Access:
-
 - Web UI: https://localhost:8443
 - API: http://localhost:3000
 
-## Project Structure
+## 🏗️ Project Structure
 
 ```
-nasos/
+nestos/
 ├── packages/
 │   ├── control-panel/    # React frontend
 │   ├── system-service/   # Node.js backend
 │   └── iso-builder/     # ISO/USB builder
 ```
 
-## Features in Development
+## 🛠️ Technology Stack
 
-- Modern TypeScript/React web interface
-- Secure HTTPS access
-- Docker container management
-- Advanced storage management
-  - RAID configuration
-  - Disk health monitoring
-  - Volume management
-- Network file sharing
-  - SMB/NFS support
-  - User management
-  - Access control
-- System monitoring
-  - Real-time metrics
-  - Hardware status
-  - Resource usage
-- Live system updates
+- Frontend:
+  * React with TypeScript
+  * Material-UI
+  * Real-time updates
+  * Responsive design
 
-## Development Notes
+- Backend:
+  * Node.js with TypeScript
+  * Fastify
+  * System integration
+  * WebSocket support
 
-- Local development mode provides limited system features due to permission restrictions
-- Docker development mode provides full system access for testing all features
-- SSL certificates are automatically generated for development
-- Hot-reloading is enabled for both frontend and backend
-- TypeScript strict mode is enabled for better code quality
+- Base System:
+  * Debian-based
+  * Docker support
+  * Hardware monitoring
+  * Network management
 
-## Contributing
+## 🤝 Contributing
 
-We welcome contributions! The project is in active development, so there are many areas where you can help:
+We welcome contributions! As this project is under active development, there are many areas where you can help:
 
 - Core Features
 - Testing
@@ -101,6 +92,12 @@ We welcome contributions! The project is in active development, so there are man
 - UI/UX
 - Bug Fixes
 
-## License
+## 📝 License
 
-MIT
+MIT License - See [LICENSE](LICENSE)
+
+---
+
+<div align="center">
+Made with ❤️ for home server enthusiasts
+</div>

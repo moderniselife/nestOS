@@ -2,52 +2,97 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/nasos-logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="NASOS Control Panel - Network Attached Storage Operating System" />
-    <meta name="theme-color" content="#1e1e1e" />
-    <title>NASOS Control Panel</title>
+    <meta name="theme-color" content="#FF7043" />
+    <meta name="description" content="NestOS - A modern, user-friendly home server operating system" />
+    <title>NestOS</title>
     <style>
       body {
         margin: 0;
         padding: 0;
-        font-family: 'Roboto', sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         background-color: #121212;
         color: #ffffff;
       }
+
       #root {
         min-height: 100vh;
         display: flex;
         flex-direction: column;
       }
-      /* Loading spinner styles */
+
       .initial-loader {
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
         min-height: 100vh;
         background-color: #121212;
+        gap: 24px;
       }
-      .initial-loader::after {
-        content: '';
-        width: 40px;
-        height: 40px;
-        border: 4px solid #2196f3;
-        border-top-color: transparent;
+
+      .loader-logo {
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
-        animation: spin 1s linear infinite;
+        background-color: #1E1E1E;
+        border: 3px solid #FF7043;
+        position: relative;
+        animation: pulse 2s infinite;
       }
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+
+      .loader-logo::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #FF7043;
+      }
+
+      .loader-text {
+        font-size: 24px;
+        font-weight: 600;
+        color: #FF7043;
+        animation: fade 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 0.8;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      @keyframes fade {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.6;
+        }
       }
     </style>
   </head>
   <body>
     <div id="root">
-      <div class="initial-loader"></div>
+      <div class="initial-loader">
+        <div class="loader-logo"></div>
+        <div class="loader-text">NestOS</div>
+      </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

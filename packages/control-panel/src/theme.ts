@@ -1,22 +1,47 @@
 import { createTheme } from '@mui/material/styles';
 
+// NestOS Color Palette
+const nestColors = {
+  primary: {
+    main: '#FF7043', // Warm orange - like a nest
+    light: '#FFA270',
+    dark: '#C63F17'
+  },
+  secondary: {
+    main: '#5D4037', // Warm brown - like wood
+    light: '#8B6B61',
+    dark: '#321911'
+  },
+  background: {
+    default: '#121212',
+    paper: '#1E1E1E'
+  },
+  success: {
+    main: '#66BB6A',
+    light: '#81C784',
+    dark: '#388E3C'
+  },
+  warning: {
+    main: '#FFA726',
+    light: '#FFB74D',
+    dark: '#F57C00'
+  },
+  error: {
+    main: '#EF5350',
+    light: '#E57373',
+    dark: '#D32F2F'
+  },
+  info: {
+    main: '#29B6F6',
+    light: '#4FC3F7',
+    dark: '#0288D1'
+  }
+};
+
 export const theme = createTheme({
   palette: {
     mode: 'dark',
-    primary: {
-      main: '#2196f3',
-      light: '#64b5f6',
-      dark: '#1976d2'
-    },
-    secondary: {
-      main: '#f50057',
-      light: '#ff4081',
-      dark: '#c51162'
-    },
-    background: {
-      default: '#121212',
-      paper: '#1e1e1e'
-    }
+    ...nestColors
   },
   typography: {
     fontFamily: [
@@ -28,7 +53,25 @@ export const theme = createTheme({
       '"Apple Color Emoji"',
       '"Segoe UI Emoji"',
       '"Segoe UI Symbol"'
-    ].join(',')
+    ].join(','),
+    h1: {
+      fontWeight: 600
+    },
+    h2: {
+      fontWeight: 600
+    },
+    h3: {
+      fontWeight: 600
+    },
+    h4: {
+      fontWeight: 600
+    },
+    h5: {
+      fontWeight: 600
+    },
+    h6: {
+      fontWeight: 600
+    }
   },
   components: {
     MuiAppBar: {
@@ -37,14 +80,15 @@ export const theme = createTheme({
       },
       styleOverrides: {
         root: {
-          backgroundColor: '#1e1e1e'
+          backgroundColor: nestColors.background.paper,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.12)'
         }
       }
     },
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          backgroundColor: '#1e1e1e',
+          backgroundColor: nestColors.background.paper,
           borderRight: '1px solid rgba(255, 255, 255, 0.12)'
         }
       }
@@ -52,8 +96,9 @@ export const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          backgroundColor: '#1e1e1e',
-          borderRadius: 8
+          backgroundColor: nestColors.background.paper,
+          borderRadius: 12,
+          border: '1px solid rgba(255, 255, 255, 0.12)'
         }
       }
     },
@@ -61,7 +106,14 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 8,
-          textTransform: 'none'
+          textTransform: 'none',
+          fontWeight: 600
+        },
+        contained: {
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: 'none'
+          }
         }
       }
     },
@@ -71,9 +123,24 @@ export const theme = createTheme({
           borderRadius: 8
         }
       }
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 6
+        }
+      }
+    },
+    MuiLinearProgress: {
+      styleOverrides: {
+        root: {
+          borderRadius: 4,
+          backgroundColor: 'rgba(255, 255, 255, 0.12)'
+        }
+      }
     }
   },
   shape: {
-    borderRadius: 8
+    borderRadius: 12
   }
 });

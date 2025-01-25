@@ -9,9 +9,12 @@ import {
   useTheme,
   CircularProgress,
   Alert,
-  Snackbar
+  Snackbar,
+  Stack,
+  Chip
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import SignalWifiStatusbar4BarIcon from '@mui/icons-material/SignalWifiStatusbar4Bar';
 import { useQuery } from '@tanstack/react-query';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from '../Sidebar';
@@ -37,7 +40,7 @@ const getPageTitle = (pathname: string): string => {
     case '/settings':
       return 'System Settings';
     default:
-      return 'NASOS Control Panel';
+      return 'NestOS';
   }
 };
 
@@ -77,7 +80,9 @@ export default function Layout() {
         position="fixed"
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` }
+          ml: { sm: `${drawerWidth}px` },
+          backgroundColor: 'background.paper',
+          borderBottom: `1px solid ${theme.palette.divider}`
         }}
       >
         <Toolbar>
@@ -90,16 +95,35 @@ export default function Layout() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+          <Typography 
+            variant="h6" 
+            noWrap 
+            component="div" 
+            sx={{ 
+              flexGrow: 1,
+              color: 'text.primary'
+            }}
+          >
             {getPageTitle(location.pathname)}
           </Typography>
-          {systemLoading ? (
-            <CircularProgress color="inherit" size={24} sx={{ ml: 2 }} />
-          ) : (
-            <Typography variant="body2" sx={{ ml: 2 }}>
-              {systemInfo?.hostname || 'Not connected'}
-            </Typography>
-          )}
+          <Stack direction="row" spacing={2} alignItems="center">
+            {systemLoading ? (
+              <CircularProgress color="primary" size={24} />
+            ) : (
+              <>
+                <SignalWifiStatusbar4BarIcon 
+                  color="primary" 
+                  sx={{ opacity: systemInfo ? 1 : 0.5 }} 
+                />
+                <Chip
+                  size="small"
+                  label={systemInfo?.hostname || 'Not connected'}
+                  color={systemInfo ? 'primary' : 'default'}
+                  variant="outlined"
+                />
+              </>
+            )}
+          </Stack>
         </Toolbar>
       </AppBar>
 
@@ -146,7 +170,8 @@ export default function Layout() {
           flexGrow: 1,
           p: 3,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: '64px' // AppBar height
+          mt: '64px', // AppBar height
+          backgroundColor: 'background.default'
         }}
       >
         <Routes>
@@ -165,7 +190,12 @@ export default function Layout() {
         onClose={handleCloseError}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+        <Alert 
+          onClose={handleCloseError} 
+          severity="error" 
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
           {error}
         </Alert>
       </Snackbar>

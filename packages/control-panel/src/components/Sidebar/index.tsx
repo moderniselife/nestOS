@@ -7,7 +7,8 @@ import {
   ListItemText,
   Divider,
   Typography,
-  useTheme
+  useTheme,
+  Stack
 } from '@mui/material';
 import {
   Storage as StorageIcon,
@@ -15,7 +16,8 @@ import {
   Cloud as DockerIcon,
   NetworkCheck as NetworkIcon,
   Settings as SettingsIcon,
-  Dashboard as DashboardIcon
+  Dashboard as DashboardIcon,
+  Home as NestIcon
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -50,15 +52,21 @@ export default function Sidebar() {
       <Box
         sx={{
           p: 2,
-          borderBottom: `1px solid ${theme.palette.divider}`
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          backgroundColor: 'background.paper'
         }}
       >
-        <Typography variant="h6" noWrap component="div">
-          NASOS
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          v0.1.0
-        </Typography>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <NestIcon sx={{ color: 'primary.main', fontSize: 32 }} />
+          <Box>
+            <Typography variant="h6" noWrap component="div" sx={{ color: 'primary.main' }}>
+              NestOS
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              v0.1.0
+            </Typography>
+          </Box>
+        </Stack>
       </Box>
 
       <List>
@@ -69,9 +77,9 @@ export default function Sidebar() {
               onClick={() => navigate(item.path)}
               sx={{
                 '&.Mui-selected': {
-                  backgroundColor: 'rgba(33, 150, 243, 0.08)',
+                  backgroundColor: 'rgba(255, 112, 67, 0.08)',
                   '&:hover': {
-                    backgroundColor: 'rgba(33, 150, 243, 0.12)'
+                    backgroundColor: 'rgba(255, 112, 67, 0.12)'
                   }
                 }
               }}

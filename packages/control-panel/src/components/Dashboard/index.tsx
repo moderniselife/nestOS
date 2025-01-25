@@ -17,6 +17,9 @@ import {
   ListItemIcon,
   Divider,
 } from '@mui/material';
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiUrl } from '../../App';
 import {
   Memory as CpuIcon,
   Storage as RamIcon,
@@ -33,8 +36,9 @@ import {
   Memory as ChipIcon,
   Build as BuildIcon,
   ViewCompact as ViewCompactIcon,
+  NavigateBefore as NavigateBeforeIcon,
+  NavigateNext as NavigateNextIcon,
 } from '@mui/icons-material';
-import { useState } from 'react';
 
 function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]> {
   const groups: Record<string, StorageDevice[]> = {};
@@ -48,8 +52,6 @@ function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]>
   });
   return groups;
 }
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiUrl } from '../../App';
 
 interface StorageDevice {
   name: string;
@@ -153,6 +155,8 @@ export default function Dashboard() {
 
   const [showSystemPartitions, setShowSystemPartitions] = useState(false);
   const [compactView, setCompactView] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 4; // Number of disk groups per page
 
   const rebootMutation = useMutation({
     mutationFn: async () => {
@@ -396,67 +400,91 @@ export default function Dashboard() {
               {!storageInfo?.devices || storageInfo.devices.length === 0 ? (
                 <Typography color="text.secondary">No storage devices found</Typography>
               ) : (
-                <Box>
-                  {Object.entries(groupDevices(storageInfo.devices)).map(([diskName, devices]) => (
-                    <Box key={diskName} sx={{ mb: 3 }}>
-                      <Box sx={{ mb: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          {devices[0].model || diskName}
-                        </Typography>
-                        {devices[0].smart && (
-                          <Chip
-                            size="small"
-                            sx={{ ml: 1 }}
-                            label={devices[0].smart.health}
-                            color={devices[0].smart.health === 'PASSED' ? 'success' : 'error'}
-                          />
-                        )}
-                      </Box>
-                      <Grid container spacing={2}>
-                        {devices
-                          .filter(device => showSystemPartitions || (!device.name.includes('boot') && !device.name.includes('efi')))
-                          .map((device: StorageDevice) => (
-                            <Grid item xs={12} md={compactView ? 6 : 12} key={device.name}>
-                              <Paper variant="outlined" sx={{ p: 1.5 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                  <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
-                                    {device.name.replace(diskName, '')}
-                                    {device.label && ` (${device.label})`}
-                                  </Typography>
-                                  {device.mount && (
-                                    <Chip
-                                      size="small"
-                                      label={device.mount}
-                                      variant="outlined"
-                                      sx={{ ml: 1 }}
-                                    />
-                                  )}
-                                </Box>
-                                {device.filesystem ? (
-                                  <>
-                                    <LinearProgress
-                                      variant="determinate"
-                                      value={device.filesystem.use || 0}
-                                      sx={{ height: 6, borderRadius: 3, mb: 0.5 }}
-                                    />
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                      {formatBytes(device.filesystem.used)} / {formatBytes(device.filesystem.size)}
-                                      {' • '}{Math.round(device.filesystem.use)}% used
-                                    </Typography>
-                                  </>
-                                ) : (
-                                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                    {formatBytes(device.size)} Total
-                                    {device.fsType && ` • ${device.fsType}`}
-                                  </Typography>
-                                )}
-                              </Paper>
-                            </Grid>
-                          ))}
-                      </Grid>
-                    </Box>
-                  ))}
-                </Box>
+                <>
+                  <Box sx={{ height: '400px', overflowY: 'auto', mb: 2 }}>
+                    {Object.entries(groupDevices(storageInfo.devices))
+                      .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
+                      .map(([diskName, devices]) => (
+                        <Box key={diskName} sx={{ mb: 3 }}>
+                          <Box sx={{ mb: 1 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                              {devices[0].model || diskName}
+                            </Typography>
+                            {devices[0].smart && (
+                              <Chip
+                                size="small"
+                                sx={{ ml: 1 }}
+                                label={devices[0].smart.health}
+                                color={devices[0].smart.health === 'PASSED' ? 'success' : 'error'}
+                              />
+                            )}
+                          </Box>
+                          <Grid container spacing={2}>
+                            {devices
+                              .filter(device => showSystemPartitions || (!device.name.includes('boot') && !device.name.includes('efi')))
+                              .map((device: StorageDevice) => (
+                                <Grid item xs={12} md={compactView ? 6 : 12} key={device.name}>
+                                  <Paper variant="outlined" sx={{ p: 1.5 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                      <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
+                                        {device.name.replace(diskName, '')}
+                                        {device.label && ` (${device.label})`}
+                                      </Typography>
+                                      {device.mount && (
+                                        <Chip
+                                          size="small"
+                                          label={device.mount}
+                                          variant="outlined"
+                                          sx={{ ml: 1 }}
+                                        />
+                                      )}
+                                    </Box>
+                                    {device.filesystem ? (
+                                      <>
+                                        <LinearProgress
+                                          variant="determinate"
+                                          value={device.filesystem.use || 0}
+                                          sx={{ height: 6, borderRadius: 3, mb: 0.5 }}
+                                        />
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                          {formatBytes(device.filesystem.used)} / {formatBytes(device.filesystem.size)}
+                                          {' • '}{Math.round(device.filesystem.use)}% used
+                                        </Typography>
+                                      </>
+                                    ) : (
+                                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                        {formatBytes(device.size)} Total
+                                        {device.fsType && ` • ${device.fsType}`}
+                                      </Typography>
+                                    )}
+                                  </Paper>
+                                </Grid>
+                              ))}
+                          </Grid>
+                        </Box>
+                      ))}
+                  </Box>
+                  <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
+                    <IconButton
+                      onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                      disabled={currentPage === 0}
+                    >
+                      <NavigateBeforeIcon />
+                    </IconButton>
+                    <Typography>
+                      Page {currentPage + 1} of {Math.ceil(Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage)}
+                    </Typography>
+                    <IconButton
+                      onClick={() => setCurrentPage(prev => Math.min(
+                        Math.ceil(Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage) - 1,
+                        prev + 1
+                      ))}
+                      disabled={currentPage >= Math.ceil(Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage) - 1}
+                    >
+                      <NavigateNextIcon />
+                    </IconButton>
+                  </Stack>
+                </>
               )}
             </CardContent>
           </Card>

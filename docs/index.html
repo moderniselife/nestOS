@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NestOS - Modern Home Server Operating System</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <meta name="description" content="NestOS is a modern, user-friendly home server operating system built with TypeScript and Debian">
+    <meta property="og:title" content="NestOS">
+    <meta property="og:description" content="A modern, user-friendly home server operating system">
+    <meta property="og:image" content="assets/logo.svg">
+    <style>
+        :root {
+            --primary: #FF7043;
+            --primary-dark: #FF5722;
+            --bg-dark: #121212;
+            --bg-paper: #1E1E1E;
+            --text: #FFFFFF;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        header {
+            background-color: var(--bg-paper);
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hero {
+            padding: 100px 0;
+            text-align: center;
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 30px;
+            filter: drop-shadow(0 0 10px rgba(255, 112, 67, 0.3));
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 40px;
+        }
+
+        .cta {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .cta:hover {
+            transform: translateY(-2px);
+        }
+
+        .features {
+            padding: 80px 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background-color: var(--bg-paper);
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-card h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        footer {
+            background-color: var(--bg-paper);
+            padding: 40px 0;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .links {
+            margin-top: 20px;
+        }
+
+        .links a {
+            color: var(--primary);
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                padding: 60px 0;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .subtitle {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <img src="assets/logo.svg" alt="NestOS Logo" height="40">
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <img src="assets/logo.svg" alt="NestOS Logo" class="logo">
+                <h1>Welcome to NestOS</h1>
+                <p class="subtitle">A modern, user-friendly home server operating system</p>
+                <a href="https://github.com/yourusername/nestos" class="cta">Get Started</a>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>Storage Management</h3>
+                        <p>Comprehensive storage management with support for RAID, disk health monitoring, and flexible volume creation.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Docker Integration</h3>
+                        <p>Built-in Docker support for running containers with an intuitive management interface.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Network Services</h3>
+                        <p>Easy configuration of network services including SMB, NFS, and network interfaces.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Modern Interface</h3>
+                        <p>Beautiful, responsive web interface built with modern technologies for the best user experience.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>System Monitoring</h3>
+                        <p>Real-time system monitoring with detailed metrics and health status information.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Security Focused</h3>
+                        <p>Built on Debian with security best practices and regular updates.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2025 NestOS. All rights reserved.</p>
+            <div class="links">
+                <a href="https://github.com/yourusername/nestos">GitHub</a>
+                <a href="https://github.com/yourusername/nestos/wiki">Documentation</a>
+                <a href="https://github.com/yourusername/nestos/issues">Support</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

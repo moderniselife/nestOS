@@ -6,19 +6,74 @@ import {
   Typography,
   LinearProgress,
   Stack,
+  Button,
   IconButton,
   Tooltip,
-  Chip
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  MenuItem,
+  Select,
+  TextField,
+  FormControl,
+  InputLabel,
+  Divider,
+  Alert
 } from '@mui/material';
 import {
   Storage as DiskIcon,
-  PlayArrow as MountIcon,
-  Stop as UnmountIcon,
-  Delete as FormatIcon,
-  Warning as WarningIcon
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Warning as WarningIcon,
+  CheckCircle as HealthyIcon,
+  Speed as SpeedIcon,
+  Memory as TypeIcon,
+  Link as MountIcon
 } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiUrl } from '../../App';
+
+interface StorageDevice {
+  name: string;
+  type: string;
+  fstype: string;
+  mount: string;
+  size: number;
+  model: string;
+  serial: string;
+  removable: boolean;
+  protocol: string;
+  smart?: {
+    health: string;
+    attributes: string;
+  };
+  layout?: {
+    vendor: string;
+    type: string;
+    interfaceType: string;
+    temperature: number;
+    firmwareRevision: string;
+  };
+  filesystem?: {
+    size: number;
+    used: number;
+    available: number;
+    use: number;
+  };
+  bus?: string;
+  path?: string;
+}
+
+interface Volume {
+  name: string;
+  type: string;
+  devices: string[];
+  mountPoint?: string;
+  filesystem?: string;
+}
 
 function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -27,147 +82,396 @@ function formatBytes(bytes: number): string {
   return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
 }
 
-interface DiskInfo {
-  device: string;
-  type: string;
-  name: string;
-  model: string;
-  size: number;
-  serial?: string;
-  removable: boolean;
-  protocol?: string;
-  uuid?: string;
-  label?: string;
-  mount?: string;
-  smart?: string;
+function getDeviceIcon(device: StorageDevice) {
+  if (device.protocol === 'USB') return 'usb';
+  if (device.protocol === 'NVMe') return 'nvme';
+  if (device.bus === 'scsi') return 'scsi';
+  return 'sata';
 }
 
 export default function Storage() {
-  const { data: storageInfo, isLoading } = useQuery({
-    queryKey: ['storage-info'],
+  const [createVolumeOpen, setCreateVolumeOpen] = useState(false);
+  const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
+  const [volumeType, setVolumeType] = useState<string>('single');
+  const [volumeName, setVolumeName] = useState('');
+  const [mountPoint, setMountPoint] = useState('');
+  const [filesystem, setFilesystem] = useState('ext4');
+  const queryClient = useQueryClient();
+
+  const { data: storageData, isLoading: storageLoading } = useQuery({
+    queryKey: ['storage-devices'],
     queryFn: async () => {
-      const response = await fetch(`${apiUrl}/api/storage/disks`);
+      const response = await fetch(`${apiUrl}/api/storage/devices`);
       if (!response.ok) {
-        throw new Error('Failed to fetch storage info');
+        throw new Error('Failed to fetch storage devices');
       }
       return response.json();
     },
     refetchInterval: 5000
   });
 
-  if (isLoading) {
+  const { data: volumeData, isLoading: volumeLoading, isError: volumeError } = useQuery({
+    queryKey: ['storage-volumes'],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/storage/volumes`);
+        if (!response.ok) {
+          // If we get a 500 error, return empty arrays
+          if (response.status === 500) {
+            return { raids: [], mounts: [] };
+          }
+          throw new Error('Failed to fetch volumes');
+        }
+        return response.json();
+      } catch (error) {
+        // Return empty arrays on any error
+        return { raids: [], mounts: [] };
+      }
+    },
+    refetchInterval: 5000,
+    retry: false
+  });
+
+  const handleCreateVolume = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/api/storage/volumes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: volumeName,
+          type: volumeType,
+          devices: selectedDevices,
+          mountPoint,
+          filesystem
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create volume');
+      }
+
+      // Invalidate queries to refresh data
+      await queryClient.invalidateQueries({ queryKey: ['storage-volumes'] });
+      await queryClient.invalidateQueries({ queryKey: ['storage-devices'] });
+
+      setCreateVolumeOpen(false);
+      setSelectedDevices([]);
+      setVolumeName('');
+      setMountPoint('');
+    } catch (error) {
+      console.error('Failed to create volume:', error);
+    }
+  };
+
+  if (storageLoading) {
     return <LinearProgress />;
   }
 
+  const raids = volumeData?.raids || [];
+  const mounts = volumeData?.mounts || [];
+
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <Typography variant="h5" gutterBottom>
-        Storage Management
-      </Typography>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+      >
+        <Typography variant="h5">Storage Management</Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setCreateVolumeOpen(true)}
+        >
+          Create Volume
+        </Button>
+      </Stack>
 
-      <Grid container spacing={3}>
-        {storageInfo?.disks.map((disk: DiskInfo) => (
-          <Grid item xs={12} key={disk.device}>
+      {/* Physical Devices */}
+      <Typography variant="h6" gutterBottom>
+        Physical Devices
+      </Typography>
+      <Grid container spacing={3} mb={4}>
+        {storageData?.devices.map((device: StorageDevice) => (
+          <Grid item xs={12} md={6} key={device.name}>
             <Card>
               <CardContent>
                 <Stack direction="row" spacing={2} alignItems="center">
                   <DiskIcon color="primary" />
                   <Box sx={{ flexGrow: 1 }}>
                     <Typography variant="h6">
-                      {disk.model || disk.name}
-                      {disk.removable && (
+                      {device.model || device.name}
+                      <Chip
+                        size="small"
+                        label={getDeviceIcon(device)}
+                        color="primary"
+                        sx={{ ml: 1 }}
+                      />
+                      {device.removable && (
                         <Chip
                           size="small"
                           label="Removable"
-                          color="info"
+                          variant="outlined"
                           sx={{ ml: 1 }}
                         />
                       )}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {disk.device} • {formatBytes(disk.size)}
+                      {formatBytes(device.size)} • {device.serial}
                     </Typography>
                   </Box>
-                  <Stack direction="row" spacing={1}>
-                    <Tooltip title={disk.mount ? 'Unmount' : 'Mount'}>
-                      <IconButton color={disk.mount ? 'error' : 'success'}>
-                        {disk.mount ? <UnmountIcon /> : <MountIcon />}
-                      </IconButton>
+                  {device.smart && (
+                    <Tooltip title={`SMART Status: ${device.smart.health}`}>
+                      {device.smart.health === 'PASSED' ? (
+                        <HealthyIcon color="success" />
+                      ) : (
+                        <WarningIcon color="error" />
+                      )}
                     </Tooltip>
-                    <Tooltip title="Format">
-                      <IconButton color="warning">
-                        <FormatIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
+                  )}
                 </Stack>
 
-                {disk.smart && (
+                <Stack direction="row" spacing={2} mt={2}>
+                  <Chip
+                    icon={<TypeIcon />}
+                    label={device.layout?.interfaceType || device.protocol}
+                    variant="outlined"
+                    size="small"
+                  />
+                  {device.layout?.temperature && (
+                    <Chip
+                      icon={<SpeedIcon />}
+                      label={`${device.layout.temperature}°C`}
+                      variant="outlined"
+                      size="small"
+                    />
+                  )}
+                  {device.mount && (
+                    <Chip
+                      icon={<MountIcon />}
+                      label={device.mount}
+                      variant="outlined"
+                      size="small"
+                    />
+                  )}
+                </Stack>
+
+                {device.filesystem && (
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="subtitle2" color="text.secondary">
-                      S.M.A.R.T Status
+                      Usage
                     </Typography>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <WarningIcon
-                        color={disk.smart.includes('PASSED') ? 'success' : 'error'}
-                        fontSize="small"
-                      />
-                      <Typography variant="body2">
-                        {disk.smart.includes('PASSED')
-                          ? 'Healthy'
-                          : 'Issues Detected'}
-                      </Typography>
-                    </Stack>
+                    <LinearProgress
+                      variant="determinate"
+                      value={device.filesystem.use}
+                      sx={{
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        '& .MuiLinearProgress-bar': {
+                          backgroundColor:
+                            device.filesystem.use > 90
+                              ? 'error.main'
+                              : device.filesystem.use > 75
+                              ? 'warning.main'
+                              : 'success.main'
+                        }
+                      }}
+                    />
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      {formatBytes(device.filesystem.used)} /{' '}
+                      {formatBytes(device.filesystem.size)} (
+                      {device.filesystem.use}%)
+                    </Typography>
                   </Box>
                 )}
-
-                {disk.mount && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Mount Point
-                    </Typography>
-                    <Typography variant="body2">{disk.mount}</Typography>
-                  </Box>
-                )}
-
-                {storageInfo?.filesystems
-                  .filter((fs: any) => fs.mount === disk.mount)
-                  .map((fs: any) => {
-                    const usedPercent = (fs.used / fs.size) * 100;
-                    return (
-                      <Box key={fs.mount} sx={{ mt: 2 }}>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Usage
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={usedPercent}
-                          sx={{
-                            height: 10,
-                            borderRadius: 5,
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            '& .MuiLinearProgress-bar': {
-                              backgroundColor:
-                                usedPercent > 90
-                                  ? 'error.main'
-                                  : usedPercent > 75
-                                  ? 'warning.main'
-                                  : 'success.main'
-                            }
-                          }}
-                        />
-                        <Typography variant="body2" sx={{ mt: 1 }}>
-                          {formatBytes(fs.used)} / {formatBytes(fs.size)} (
-                          {Math.round(usedPercent)}%)
-                        </Typography>
-                      </Box>
-                    );
-                  })}
               </CardContent>
             </Card>
           </Grid>
         ))}
       </Grid>
+
+      {/* Volumes */}
+      <Typography variant="h6" gutterBottom>
+        Volumes
+      </Typography>
+      {volumeError ? (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Volume management is not available in the current environment.
+        </Alert>
+      ) : (
+        <Grid container spacing={3}>
+          {raids.map((volume: Volume) => (
+            <Grid item xs={12} md={6} key={volume.name}>
+              <Card>
+                <CardContent>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <DiskIcon color="primary" />
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="h6">
+                        {volume.name}
+                        <Chip
+                          size="small"
+                          label={volume.type}
+                          color="primary"
+                          sx={{ ml: 1 }}
+                        />
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {volume.devices.length} devices
+                      </Typography>
+                    </Box>
+                    <IconButton
+                      color="error"
+                      onClick={async () => {
+                        try {
+                          await fetch(
+                            `${apiUrl}/api/storage/volumes/${volume.name}`,
+                            {
+                              method: 'DELETE'
+                            }
+                          );
+                          // Invalidate queries to refresh data
+                          await queryClient.invalidateQueries({ queryKey: ['storage-volumes'] });
+                          await queryClient.invalidateQueries({ queryKey: ['storage-devices'] });
+                        } catch (error) {
+                          console.error('Failed to delete volume:', error);
+                        }
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Stack>
+
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Devices
+                    </Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap">
+                      {volume.devices.map((device) => (
+                        <Chip
+                          key={device}
+                          label={device}
+                          variant="outlined"
+                          size="small"
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+
+                  {volume.mountPoint && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Mount Point
+                      </Typography>
+                      <Typography variant="body2">{volume.mountPoint}</Typography>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      {/* Create Volume Dialog */}
+      <Dialog
+        open={createVolumeOpen}
+        onClose={() => setCreateVolumeOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Create Volume</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 2 }}>
+            <TextField
+              label="Volume Name"
+              value={volumeName}
+              onChange={(e) => setVolumeName(e.target.value)}
+              fullWidth
+            />
+
+            <FormControl fullWidth>
+              <InputLabel>Volume Type</InputLabel>
+              <Select
+                value={volumeType}
+                label="Volume Type"
+                onChange={(e) => setVolumeType(e.target.value)}
+              >
+                <MenuItem value="single">Single Disk</MenuItem>
+                <MenuItem value="raid0">RAID 0 (Stripe)</MenuItem>
+                <MenuItem value="raid1">RAID 1 (Mirror)</MenuItem>
+                <MenuItem value="raid5">RAID 5</MenuItem>
+                <MenuItem value="raid6">RAID 6</MenuItem>
+                <MenuItem value="raid10">RAID 10</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>Devices</InputLabel>
+              <Select
+                multiple
+                value={selectedDevices}
+                label="Devices"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedDevices(typeof value === 'string' ? value.split(',') : value);
+                }}
+              >
+                {storageData?.devices.map((device: StorageDevice) => (
+                  <MenuItem key={device.name} value={device.name}>
+                    {device.name} ({formatBytes(device.size)})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>Filesystem</InputLabel>
+              <Select
+                value={filesystem}
+                label="Filesystem"
+                onChange={(e) => setFilesystem(e.target.value)}
+              >
+                <MenuItem value="ext4">ext4</MenuItem>
+                <MenuItem value="xfs">XFS</MenuItem>
+                <MenuItem value="btrfs">Btrfs</MenuItem>
+                <MenuItem value="zfs">ZFS</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Mount Point"
+              value={mountPoint}
+              onChange={(e) => setMountPoint(e.target.value)}
+              fullWidth
+            />
+
+            {volumeType !== 'single' && (
+              <Alert severity="info">
+                {volumeType === 'raid0' && 'RAID 0 stripes data across disks for performance but offers no redundancy.'}
+                {volumeType === 'raid1' && 'RAID 1 mirrors data across disks for redundancy.'}
+                {volumeType === 'raid5' && 'RAID 5 requires at least 3 disks and provides single disk failure protection.'}
+                {volumeType === 'raid6' && 'RAID 6 requires at least 4 disks and provides dual disk failure protection.'}
+                {volumeType === 'raid10' && 'RAID 10 requires at least 4 disks and combines mirroring and striping.'}
+              </Alert>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateVolumeOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleCreateVolume}
+            disabled={!volumeName || selectedDevices.length === 0}
+          >
+            Create
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -1,0 +1,52 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Assets Directory
+        run: |
+          mkdir -p docs/assets
+          cp packages/control-panel/public/logo.svg docs/assets/
+          cp packages/control-panel/public/favicon.svg docs/assets/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        if: github.ref == 'refs/heads/main'
+
+      - name: Create .nojekyll file
+        run: touch docs/.nojekyll
+
+      - name: Update Repository Settings
+        run: |
+          echo "Please manually enable GitHub Pages in your repository settings:"
+          echo "1. Go to Settings > Pages"
+          echo "2. Set Source to 'GitHub Actions'"
+          echo "3. Ensure Custom Domain is set to 'nestos.cloud'"
+          echo "4. Enable 'Enforce HTTPS'"

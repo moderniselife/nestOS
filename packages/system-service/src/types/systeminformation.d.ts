@@ -1,44 +1,87 @@
 declare module 'systeminformation' {
-  export interface OsData extends Systeminformation.OsData {
-    uptime: number;
-    hostname: string;
+  export interface CpuData {
+    manufacturer: string;
+    brand: string;
+    cores: number;
+    physicalCores: number;
+    speed: number;
+    temperature: number;
+  }
+
+  export interface MemData {
+    total: number;
+    free: number;
+    used: number;
+    active: number;
+    available: number;
+    swaptotal: number;
+    swapused: number;
+    swapfree: number;
+  }
+
+  export interface OsData {
     platform: string;
     distro: string;
     release: string;
+    hostname: string;
     arch: string;
+    uptime: number;
   }
 
-  export interface BlockDevicesData extends Systeminformation.BlockDevicesData {
+  export interface SystemData {
+    manufacturer: string;
+    model: string;
+    version: string;
+    serial: string;
+    uuid: string;
+  }
+
+  export interface BlockDevice {
     name: string;
     type: string;
-    model: string;
+    fstype: string;
+    mount: string;
     size: number;
-    serial?: string;
+    physical: string;
+    uuid: string;
+    label: string;
+    model: string;
+    serial: string;
     removable: boolean;
-    protocol?: string;
-    uuid?: string;
-    label?: string;
-    mount?: string;
+    protocol: string;
   }
 
-  export interface DockerInfoData extends Systeminformation.DockerInfoData {
-    containers: number;
-    containersRunning: number;
-    containersPaused: number;
-    containersStopped: number;
-    images: number;
-    MemoryLimit: boolean;
-    CpuCfsPeriod: boolean;
-    CpuCfsQuota: boolean;
+  export interface DiskLayout {
+    device: string;
+    type: string;
+    name: string;
+    vendor: string;
+    size: number;
+    bytesPerSector: number;
+    totalCylinders: number;
+    totalHeads: number;
+    totalSectors: number;
+    totalTracks: number;
+    tracksPerCylinder: number;
+    sectorsPerTrack: number;
+    firmwareRevision: string;
+    serialNum: string;
+    interfaceType: string;
+    smartStatus: string;
+    temperature: number;
   }
 
-  export interface CurrentLoadData extends Systeminformation.CurrentLoadData {
-    avgLoad: number;
-    currentLoad: number;
-    cpus: Array<{ load: number }>;
+  export interface FSSize {
+    fs: string;
+    type: string;
+    size: number;
+    used: number;
+    available: number;
+    use: number;
+    mount: string;
   }
 
-  export interface NetworkInterfaceData {
+  export interface NetworkInterface {
     iface: string;
     ifaceName: string;
     ip4: string;
@@ -53,7 +96,20 @@ declare module 'systeminformation' {
     dhcp: boolean;
   }
 
-  export interface NetworkConnectionData {
+  export interface NetworkStats {
+    iface: string;
+    operstate: string;
+    rx_bytes: number;
+    rx_dropped: number;
+    rx_errors: number;
+    tx_bytes: number;
+    tx_dropped: number;
+    tx_errors: number;
+    rx_sec: number;
+    tx_sec: number;
+  }
+
+  export interface NetworkConnection {
     protocol: string;
     localAddress: string;
     localPort: string;
@@ -62,42 +118,53 @@ declare module 'systeminformation' {
     state: string;
   }
 
-  export interface SystemData {
-    manufacturer: string;
-    model: string;
-    version: string;
-    serial: string;
-    uuid: string;
+  export interface CurrentLoad {
+    avgLoad: number;
+    currentLoad: number;
+    currentLoadUser: number;
+    currentLoadSystem: number;
+    cpus: Array<{
+      load: number;
+      loadUser: number;
+      loadSystem: number;
+    }>;
   }
 
-  export interface Systeminformation {
-    osInfo(): Promise<OsData>;
-    blockDevices(): Promise<BlockDevicesData[]>;
-    dockerInfo(): Promise<DockerInfoData>;
-    currentLoad(): Promise<CurrentLoadData>;
-    system(): Promise<SystemData>;
-    networkInterfaces(): Promise<NetworkInterfaceData[]>;
-    networkGatewayDefault(): Promise<string>;
-    networkInterfaceDefault(): Promise<string>;
-    networkConnections(): Promise<NetworkConnectionData[]>;
+  export interface DockerInfo {
+    containers: number;
+    containersRunning: number;
+    containersPaused: number;
+    containersStopped: number;
+    images: number;
   }
 
-  const si: {
+  export interface Service {
+    name: string;
+    running: boolean;
+    startmode: string;
+    pids: number[];
+    cpu: number;
+    mem: number;
+  }
+
+  export interface SystemInfo {
+    cpu(): Promise<CpuData>;
+    mem(): Promise<MemData>;
     osInfo(): Promise<OsData>;
     system(): Promise<SystemData>;
-    blockDevices(): Promise<BlockDevicesData[]>;
-    dockerInfo(): Promise<DockerInfoData>;
-    currentLoad(): Promise<CurrentLoadData>;
-    cpu(): Promise<Systeminformation.CpuData>;
-    mem(): Promise<Systeminformation.MemData>;
-    fsSize(): Promise<Systeminformation.FsSizeData[]>;
-    networkStats(): Promise<Systeminformation.NetworkStatsData[]>;
-    networkInterfaces(): Promise<NetworkInterfaceData[]>;
+    blockDevices(): Promise<BlockDevice[]>;
+    diskLayout(): Promise<DiskLayout[]>;
+    fsSize(): Promise<FSSize[]>;
+    networkInterfaces(): Promise<NetworkInterface[]>;
+    networkStats(): Promise<NetworkStats[]>;
+    networkConnections(): Promise<NetworkConnection[]>;
     networkGatewayDefault(): Promise<string>;
     networkInterfaceDefault(): Promise<string>;
-    networkConnections(): Promise<NetworkConnectionData[]>;
-    services(serviceName: string): Promise<Systeminformation.ServicesData[]>;
-  };
+    currentLoad(): Promise<CurrentLoad>;
+    dockerInfo(): Promise<DockerInfo>;
+    services(serviceName: string): Promise<Service[]>;
+  }
 
+  const si: SystemInfo;
   export default si;
 }

@@ -6,164 +6,227 @@ import si from 'systeminformation';
 
 const execAsync = promisify(exec);
 
-const mountPointSchema = z.object({
-  device: z.string(),
-  mountPoint: z.string(),
-  fsType: z.string().optional().default('ext4')
-});
-
-const raidConfigSchema = z.object({
-  level: z.enum(['0', '1', '5', '6', '10']),
-  devices: z.array(z.string()),
-  name: z.string()
-});
-
-interface DiskInfo {
-  device: string;
-  type: string;
+interface RaidArray {
   name: string;
-  model: string;
-  size: number;
-  serial?: string;
-  removable: boolean;
-  protocol?: string;
-  uuid?: string;
-  label?: string;
-  mount?: string;
-  smart?: string;
+  type: string;
+  devices: string[];
 }
 
+interface MountPoint {
+  device: string;
+  mountPoint: string;
+  type: string;
+}
+
+// Validation schemas
+const volumeSchema = z.object({
+  name: z.string(),
+  type: z.enum(['single', 'raid0', 'raid1', 'raid5', 'raid6', 'raid10']),
+  devices: z.array(z.string()),
+  mountPoint: z.string().optional(),
+  filesystem: z.enum(['ext4', 'xfs', 'btrfs', 'zfs']).optional()
+});
+
 export const storageRoutes: FastifyPluginAsync = async (fastify) => {
-  // Get all disks information
-  fastify.get('/disks', async () => {
+  // Get all storage devices
+  fastify.get('/devices', async () => {
     try {
-      const [blockDevices, fsSize] = await Promise.all([
+      const [blockDevices, diskLayout, fsSize] = await Promise.all([
         si.blockDevices(),
+        si.diskLayout(),
         si.fsSize()
       ]);
 
-      const diskDetails = await Promise.all(
-        blockDevices.map(async (disk): Promise<DiskInfo> => {
-          const smartInfo = await execAsync(`smartctl -a ${disk.name}`).catch(() => ({ stdout: '' }));
+      // Enhance block devices with additional information
+      const enhancedDevices = await Promise.all(
+        blockDevices.map(async (device) => {
+          const layout = diskLayout.find(d => d.device === device.name);
+          const fs = fsSize.find(f => f.fs === device.mount);
           
+          // Get SMART data if available
+          let smart = null;
+          try {
+            const { stdout } = await execAsync(`smartctl -H -A ${device.name}`);
+            smart = {
+              health: stdout.includes('PASSED') ? 'PASSED' : 'FAILED',
+              attributes: stdout
+            };
+          } catch (error) {
+            // SMART might not be available for all devices
+          }
+
+          // Get additional device information
+          let additional = {};
+          try {
+            const { stdout: udevInfo } = await execAsync(`udevadm info --query=all --name=${device.name}`);
+            additional = {
+              bus: udevInfo.match(/ID_BUS=(.*)/)?.[1],
+              path: udevInfo.match(/ID_PATH=(.*)/)?.[1],
+              serial: udevInfo.match(/ID_SERIAL=(.*)/)?.[1]
+            };
+          } catch (error) {
+            // Additional info might not be available
+          }
+
           return {
-            device: disk.name,
-            type: disk.type,
-            name: disk.name,
-            model: disk.model || 'Unknown',
-            size: disk.size,
-            serial: disk.serial,
-            removable: disk.removable || false,
-            protocol: disk.protocol,
-            uuid: disk.uuid,
-            label: disk.label,
-            mount: disk.mount,
-            smart: smartInfo.stdout
+            ...device,
+            smart,
+            layout: layout ? {
+              vendor: layout.vendor,
+              type: layout.type,
+              size: layout.size,
+              interfaceType: layout.interfaceType,
+              temperature: layout.temperature,
+              serialNum: layout.serialNum,
+              firmwareRevision: layout.firmwareRevision
+            } : null,
+            filesystem: fs ? {
+              size: fs.size,
+              used: fs.used,
+              available: fs.available,
+              use: fs.use
+            } : null,
+            ...additional
           };
         })
       );
 
+      return { devices: enhancedDevices };
+    } catch (error) {
+      throw new Error(`Failed to get storage devices: ${error}`);
+    }
+  });
+
+  // Create volume
+  fastify.post('/volumes', async (request) => {
+    const config = volumeSchema.parse(request.body);
+    
+    try {
+      switch (config.type) {
+        case 'single': {
+          // Format single disk
+          await execAsync(`mkfs.${config.filesystem || 'ext4'} ${config.devices[0]}`);
+          if (config.mountPoint) {
+            await execAsync(`mount ${config.devices[0]} ${config.mountPoint}`);
+          }
+          break;
+        }
+        case 'raid0':
+        case 'raid1':
+        case 'raid5':
+        case 'raid6':
+        case 'raid10': {
+          // Create RAID array
+          const level = config.type.replace('raid', '');
+          await execAsync(
+            `mdadm --create /dev/md/${config.name} --level=${level} --raid-devices=${config.devices.length} ${config.devices.join(' ')}`
+          );
+          if (config.filesystem) {
+            await execAsync(`mkfs.${config.filesystem} /dev/md/${config.name}`);
+          }
+          if (config.mountPoint) {
+            await execAsync(`mount /dev/md/${config.name} ${config.mountPoint}`);
+          }
+          break;
+        }
+      }
+
+      return { status: 'created', name: config.name };
+    } catch (error) {
+      throw new Error(`Failed to create volume: ${error}`);
+    }
+  });
+
+  // Get volume information
+  fastify.get('/volumes', async () => {
+    try {
+      let raids: RaidArray[] = [];
+      let mounts: MountPoint[] = [];
+
+      // Try to get RAID information if available
+      try {
+        const { stdout: mdstat } = await execAsync('cat /proc/mdstat');
+        raids = mdstat
+          .split('\n')
+          .filter(line => line.includes(' : '))
+          .map(line => {
+            const [name, info] = line.split(' : ');
+            const [type, devices] = info.split(' ');
+            return {
+              name,
+              type,
+              devices: devices.split(' ').filter(Boolean)
+            };
+          });
+      } catch (error) {
+        // mdstat not available, return empty array
+        raids = [];
+      }
+
+      // Try to get mount information
+      try {
+        const { stdout: mountInfo } = await execAsync('mount');
+        mounts = mountInfo
+          .split('\n')
+          .filter(Boolean)
+          .map(line => {
+            const [device, mountPoint, type] = line.split(' ');
+            return { device, mountPoint, type };
+          });
+      } catch (error) {
+        // mount info not available, return empty array
+        mounts = [];
+      }
+
       return {
-        disks: diskDetails,
-        filesystems: fsSize
+        raids,
+        mounts
       };
     } catch (error) {
-      throw new Error(`Failed to get disk information: ${error}`);
-    }
-  });
-
-  // Mount a disk
-  fastify.post('/mount', async (request) => {
-    const { device, mountPoint, fsType } = mountPointSchema.parse(request.body);
-
-    try {
-      // Create mount point directory if it doesn't exist
-      await execAsync(`mkdir -p ${mountPoint}`);
-      
-      // Mount the device
-      await execAsync(`mount -t ${fsType} ${device} ${mountPoint}`);
-      
-      // Add to fstab for persistence
-      const fstabEntry = `${device} ${mountPoint} ${fsType} defaults 0 0`;
-      await execAsync(`echo "${fstabEntry}" >> /etc/fstab`);
-
-      return { status: 'mounted', device, mountPoint };
-    } catch (error) {
-      throw new Error(`Failed to mount device: ${error}`);
-    }
-  });
-
-  // Unmount a disk
-  fastify.post('/unmount', async (request) => {
-    const { mountPoint } = z.object({ mountPoint: z.string() }).parse(request.body);
-
-    try {
-      await execAsync(`umount ${mountPoint}`);
-      
-      // Remove from fstab
-      await execAsync(`sed -i "\|${mountPoint}|d" /etc/fstab`);
-
-      return { status: 'unmounted', mountPoint };
-    } catch (error) {
-      throw new Error(`Failed to unmount device: ${error}`);
-    }
-  });
-
-  // Create RAID array
-  fastify.post('/raid', async (request) => {
-    const { level, devices, name } = raidConfigSchema.parse(request.body);
-
-    try {
-      // Create RAID array using mdadm
-      const deviceList = devices.join(' ');
-      await execAsync(
-        `mdadm --create /dev/md/${name} --level=${level} --raid-devices=${devices.length} ${deviceList}`
-      );
-
-      // Save RAID configuration
-      await execAsync('mdadm --detail --scan >> /etc/mdadm/mdadm.conf');
-      
-      // Update initramfs
-      await execAsync('update-initramfs -u');
-
+      // Return empty arrays if we can't get volume information
       return {
-        status: 'created',
-        name,
-        level,
-        devices
+        raids: [] as RaidArray[],
+        mounts: [] as MountPoint[]
       };
-    } catch (error) {
-      throw new Error(`Failed to create RAID array: ${error}`);
     }
   });
 
-  // Get RAID status
-  fastify.get('/raid', async () => {
-    try {
-      const { stdout: config } = await execAsync('mdadm --detail --scan');
-      const { stdout: status } = await execAsync('cat /proc/mdstat');
+  // Delete volume
+  fastify.delete('/volumes/:name', async (request) => {
+    const { name } = z.object({
+      name: z.string()
+    }).parse(request.params);
 
-      return {
-        configuration: config,
-        status
-      };
+    try {
+      // Unmount first if mounted
+      try {
+        await execAsync(`umount /dev/md/${name}`);
+      } catch (error) {
+        // Might not be mounted
+      }
+
+      // Stop and remove the array
+      await execAsync(`mdadm --stop /dev/md/${name}`);
+      await execAsync(`mdadm --remove /dev/md/${name}`);
+
+      return { status: 'deleted', name };
     } catch (error) {
-      throw new Error(`Failed to get RAID status: ${error}`);
+      throw new Error(`Failed to delete volume: ${error}`);
     }
   });
 
-  // Format a disk
-  fastify.post('/format', async (request) => {
-    const { device, fsType } = z.object({
-      device: z.string(),
-      fsType: z.string().default('ext4')
-    }).parse(request.body);
+  // Get SMART information
+  fastify.get('/smart/:device', async (request) => {
+    const { device } = z.object({
+      device: z.string()
+    }).parse(request.params);
 
     try {
-      await execAsync(`mkfs.${fsType} ${device}`);
-      return { status: 'formatted', device, fsType };
+      const { stdout } = await execAsync(`smartctl -a ${device}`);
+      return { data: stdout };
     } catch (error) {
-      throw new Error(`Failed to format device: ${error}`);
+      // Return null if SMART data is not available
+      return { data: null };
     }
   });
 };

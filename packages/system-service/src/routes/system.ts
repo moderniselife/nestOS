@@ -143,6 +143,30 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
     };
   });
 
+  // Get system logs
+  fastify.get('/logs', {
+    schema: logsSchema
+  }, async () => {
+    try {
+      // Try journalctl first (Linux)
+      try {
+        const { stdout } = await execAsync('journalctl -n 1000 --no-pager');
+        return { logs: stdout };
+      } catch {
+        // Fall back to system.log (macOS)
+        try {
+          const { stdout } = await execAsync('tail -n 1000 /var/log/system.log');
+          return { logs: stdout };
+        } catch {
+          // If both fail, return empty logs
+          return { logs: 'No system logs available' };
+        }
+      }
+    } catch (error) {
+      throw new Error(`Failed to get system logs: ${error}`);
+    }
+  });
+
   // Performance test
   fastify.post('/performance', { schema: performanceTestSchema }, async () => {
     try {
@@ -164,69 +188,80 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         si.currentLoad().then(load => load.avgLoad)
       ]);
 
-      // Memory Performance Test
-      const memTest = await Promise.all([
-        // Read speed
-        execAsync('dd if=/dev/zero of=/dev/null bs=1M count=1000'),
-        // Write speed (removed fdatasync for macOS compatibility)
-        execAsync('dd if=/dev/zero of=/tmp/test bs=1M count=1000'),
-        // Latency (using simple allocation/deallocation)
+      // Memory Performance Test using Node.js buffer operations
+      const memoryTest = await Promise.all([
+        // Memory read speed test
+        new Promise<number>(async (resolve) => {
+          const size = 1024 * 1024 * 100; // 100MB
+          const buffer = Buffer.alloc(size);
+          const iterations = 10;
+          const startTime = process.hrtime.bigint();
+          
+          for (let i = 0; i < iterations; i++) {
+            const newBuffer = Buffer.alloc(size);
+            buffer.copy(newBuffer);
+          }
+          
+          const endTime = process.hrtime.bigint();
+          const duration = Number(endTime - startTime) / 1e9; // seconds
+          const throughput = (size * iterations) / (1024 * 1024 * duration); // MB/s
+          resolve(throughput);
+        }),
+        // Memory write speed test
+        new Promise<number>(async (resolve) => {
+          const size = 1024 * 1024 * 100; // 100MB
+          const iterations = 10;
+          const startTime = process.hrtime.bigint();
+          
+          for (let i = 0; i < iterations; i++) {
+            const buffer = Buffer.alloc(size);
+            buffer.fill(Math.random());
+          }
+          
+          const endTime = process.hrtime.bigint();
+          const duration = Number(endTime - startTime) / 1e9; // seconds
+          const throughput = (size * iterations) / (1024 * 1024 * duration); // MB/s
+          resolve(throughput);
+        }),
+        // Memory latency test
         new Promise<number>(async (resolve) => {
           const startTime = process.hrtime.bigint();
-          const testSize = 1024 * 1024 * 100; // 100MB
-          const buffer = Buffer.alloc(testSize);
+          const buffer = Buffer.alloc(1024 * 1024 * 100); // 100MB
           buffer.fill(0);
           const endTime = process.hrtime.bigint();
-          resolve(Number(endTime - startTime) / 1e6);
+          resolve(Number(endTime - startTime) / 1e6); // milliseconds
         })
       ]);
 
-      // Check OS type
+      // Disk Performance Test
       const { stdout: osType } = await execAsync('uname');
       const isLinux = osType.trim() === 'Linux';
-
-      let diskTest;
-      let diskResults;
-
-      // Check if fio is available
       const hasFio = await execAsync('which fio').catch(() => ({ stdout: '' }));
-      
+
+      let diskResults: { readSpeed: number; writeSpeed: number; iops: number };
+
       if (isLinux && hasFio.stdout.trim()) {
-        // Linux performance test with fio
-        try {
-          diskTest = await Promise.all([
-            execAsync('dd if=/dev/zero of=/tmp/testfile bs=1M count=1000 conv=fdatasync'),
-            execAsync('dd if=/tmp/testfile of=/dev/null bs=1M count=1000'),
-            execAsync('fio --name=randread --ioengine=libaio --direct=1 --bs=4k --iodepth=32 --size=1G --rw=randread --runtime=10 --filename=/tmp/testfile --output-format=json')
-          ]);
+        // Linux with fio
+        const diskTest = await Promise.all([
+          execAsync('dd if=/dev/zero of=/tmp/testfile bs=1M count=1000 conv=fdatasync'),
+          execAsync('dd if=/tmp/testfile of=/dev/null bs=1M count=1000'),
+          execAsync('fio --name=randread --ioengine=libaio --direct=1 --bs=4k --iodepth=32 --size=1G --rw=randread --runtime=10 --filename=/tmp/testfile --output-format=json')
+        ]);
 
-          diskResults = {
-            readSpeed: parseFloat(diskTest[1].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
-            writeSpeed: parseFloat(diskTest[0].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
-            iops: JSON.parse(diskTest[2].stdout).jobs[0].read.iops
-          };
-        } catch (error) {
-          // Fallback to basic test if fio test fails
-          diskTest = await Promise.all([
-            execAsync('dd if=/dev/zero of=/tmp/testfile bs=1M count=1000 2>&1'),
-            execAsync('dd if=/tmp/testfile of=/dev/null bs=1M count=1000 2>&1')
-          ]);
-
-          diskResults = {
-            readSpeed: parseFloat(diskTest[1].stderr.match(/([0-9.]+) ([kMG])B\/s/)?.[1] || '0'),
-            writeSpeed: parseFloat(diskTest[0].stderr.match(/([0-9.]+) ([kMG])B\/s/)?.[1] || '0'),
-            iops: 0 // Cannot calculate IOPS without fio
-          };
-        }
+        diskResults = {
+          readSpeed: parseFloat(diskTest[1].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
+          writeSpeed: parseFloat(diskTest[0].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
+          iops: JSON.parse(diskTest[2].stdout).jobs[0].read.iops
+        };
       } else {
         // macOS or Linux without fio
-        diskTest = await Promise.all([
+        const diskTest = await Promise.all([
           execAsync('dd if=/dev/zero of=/tmp/testfile bs=1m count=1000 2>&1'),
           execAsync('dd if=/tmp/testfile of=/dev/null bs=1m count=1000 2>&1')
         ]);
 
-        const parseSpeed = (output: string): number => {
-          const match = output.match(/([0-9.]+)\s*([kMG])?B\/s/);
+        const parseSpeed = (output: { stdout: string; stderr: string }): number => {
+          const match = (output.stderr || output.stdout).match(/([0-9.]+)\s*([kMG])?B\/s/);
           if (!match) return 0;
           const [, value, unit = 'M'] = match;
           const val = parseFloat(value);
@@ -240,12 +275,12 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
 
         // Calculate IOPS using small block size reads
         const iopsTest = await execAsync('dd if=/tmp/testfile of=/dev/null bs=4k count=1000 2>&1');
-        const iopsSpeed = parseSpeed(iopsTest.stderr);
+        const iopsSpeed = parseSpeed(iopsTest);
         const iops = Math.round((iopsSpeed * 1024 * 1024) / 4096); // Convert MB/s to 4K IOPS
 
         diskResults = {
-          readSpeed: parseSpeed(diskTest[1].stderr),
-          writeSpeed: parseSpeed(diskTest[0].stderr),
+          writeSpeed: parseSpeed(diskTest[0]),
+          readSpeed: parseSpeed(diskTest[1]),
           iops
         };
       }
@@ -253,22 +288,19 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       // Clean up test files
       await execAsync('rm -f /tmp/testfile /tmp/test');
 
-      // Parse results
-      const result = {
+      return {
         cpu: {
           singleCore: cpuTest[0],
           multiCore: cpuTest[1].currentLoad,
           loadAverage: Array.isArray(cpuTest[2]) ? cpuTest[2] : [cpuTest[2]]
         },
         memory: {
-          readSpeed: parseFloat(memTest[0].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
-          writeSpeed: parseFloat(memTest[1].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
-          latency: memTest[2]
+          readSpeed: memoryTest[0],
+          writeSpeed: memoryTest[1],
+          latency: memoryTest[2]
         },
         disk: diskResults
       };
-
-      return result;
     } catch (error) {
       throw new Error(`Performance test failed: ${error}`);
     }
@@ -291,30 +323,6 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       return { status: 'shutting_down' };
     } catch (error) {
       throw new Error(`Failed to initiate shutdown: ${error}`);
-    }
-  });
-
-  // Get system logs
-  fastify.get('/logs', {
-    schema: logsSchema
-  }, async () => {
-    try {
-      // Try journalctl first (Linux)
-      try {
-        const { stdout } = await execAsync('journalctl -n 1000 --no-pager');
-        return { logs: stdout };
-      } catch {
-        // Fall back to system.log (macOS)
-        try {
-          const { stdout } = await execAsync('tail -n 1000 /var/log/system.log');
-          return { logs: stdout };
-        } catch {
-          // If both fail, return empty logs
-          return { logs: 'No system logs available' };
-        }
-      }
-    } catch (error) {
-      throw new Error(`Failed to get system logs: ${error}`);
     }
   });
 

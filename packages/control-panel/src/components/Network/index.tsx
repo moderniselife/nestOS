@@ -9,7 +9,8 @@ import {
   Button,
   Chip,
   IconButton,
-  Tooltip
+  Tooltip,
+  CircularProgress
 } from '@mui/material';
 import {
   NetworkCheck as NetworkIcon,
@@ -17,10 +18,24 @@ import {
   Delete as DeleteIcon,
   Add as AddIcon,
   Refresh as RefreshIcon,
-  Check as DefaultIcon
+  Check as DefaultIcon,
+  Speed as SpeedIcon
 } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiUrl } from '../../App';
+
+interface NetworkTest {
+  ping: {
+    host: string;
+    latency: number;
+    packetLoss: number;
+  };
+  speedtest?: {
+    download: number;
+    upload: number;
+    latency: number;
+  };
+}
 
 interface NetworkInterface {
   iface: string;
@@ -51,7 +66,9 @@ function getConnectionStatusColor(state: string): 'success' | 'error' | 'warning
 }
 
 export default function Network() {
-  const { data: networkData, isLoading } = useQuery({
+  const queryClient = useQueryClient();
+  
+  const { data: networkData, isLoading: interfacesLoading } = useQuery({
     queryKey: ['network-info'],
     queryFn: async () => {
       const response = await fetch(`${apiUrl}/api/network/interfaces`);
@@ -63,7 +80,21 @@ export default function Network() {
     refetchInterval: 5000
   });
 
-  if (isLoading) {
+  const { data: networkTest, isLoading: testLoading, refetch: refetchTest } = useQuery({
+    queryKey: ['network-test'],
+    queryFn: async () => {
+      const response = await fetch(`${apiUrl}/api/network/test`, {
+        method: 'POST'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to run network test');
+      }
+      return response.json() as Promise<NetworkTest>;
+    },
+    enabled: false // Don't run automatically
+  });
+
+  if (interfacesLoading || testLoading) {
     return <LinearProgress />;
   }
 
@@ -99,6 +130,64 @@ export default function Network() {
           </Button>
         </Stack>
       </Stack>
+
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <SpeedIcon color="primary" />
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography variant="h6">Network Tests</Typography>
+            </Box>
+            <Button
+              variant="contained"
+              startIcon={testLoading ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
+              onClick={() => refetchTest()}
+              disabled={testLoading}
+            >
+              Run Tests
+            </Button>
+          </Stack>
+
+          <Box sx={{ mt: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={4}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Ping Test
+                </Typography>
+                <Typography variant="body2">
+                  Host: {networkTest?.ping.host || 'N/A'}
+                </Typography>
+                <Typography variant="body2">
+                  Latency: {networkTest?.ping.latency.toFixed(2) || 'N/A'} ms
+                </Typography>
+                <Typography variant="body2">
+                  Packet Loss: {networkTest?.ping.packetLoss || 'N/A'}%
+                </Typography>
+              </Grid>
+              {networkTest?.speedtest && (
+                <>
+                  <Grid item xs={12} sm={4}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Download Speed
+                    </Typography>
+                    <Typography variant="h6" color="primary">
+                      {networkTest.speedtest.download.toFixed(1)} Mbps
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Upload Speed
+                    </Typography>
+                    <Typography variant="h6" color="primary">
+                      {networkTest.speedtest.upload.toFixed(1)} Mbps
+                    </Typography>
+                  </Grid>
+                </>
+              )}
+            </Grid>
+          </Box>
+        </CardContent>
+      </Card>
 
       <Grid container spacing={3}>
         {networkData?.interfaces.map((iface: NetworkInterface) => (

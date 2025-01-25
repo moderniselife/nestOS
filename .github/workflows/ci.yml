@@ -81,12 +81,32 @@ jobs:
           path: packages/iso-builder/build/nestos.iso
           retention-days: 7
 
+      - name: Make version script executable
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: chmod +x .github/scripts/calculate-version.js
+
+      - name: Calculate new version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: version
+        run: |
+          NEW_VERSION=$(.github/scripts/calculate-version.js)
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Commit version bump
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }}" || true
+          git push
+
       - name: Create Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          name: NestOS ${{ github.sha }}
-          tag_name: v${{ github.run_number }}
+          name: NestOS v${{ steps.version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.version }}
           files: packages/iso-builder/build/nestos.iso
           draft: false
           prerelease: false

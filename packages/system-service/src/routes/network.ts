@@ -6,6 +6,19 @@ import si from 'systeminformation';
 
 const execAsync = promisify(exec);
 
+const networkTestResponseSchema = z.object({
+  ping: z.object({
+    host: z.string(),
+    latency: z.number(),
+    packetLoss: z.number()
+  }),
+  speedtest: z.object({
+    download: z.number(),
+    upload: z.number(),
+    latency: z.number()
+  }).optional()
+});
+
 const interfaceSchema = z.object({
   iface: z.string(),
   ip4: z.string().optional(),
@@ -15,7 +28,78 @@ const interfaceSchema = z.object({
   dhcp: z.boolean().optional()
 });
 
+function analyzePingOutput(output: string) {
+  const lines = output.split('\n');
+  const stats = lines[lines.length - 2] || '';
+  const latencyMatch = stats.match(/min\/avg\/max\/mdev = ([\d.]+)\/([\d.]+)\/([\d.]+)\/([\d.]+)/);
+  const packetLossMatch = stats.match(/(\d+)% packet loss/);
+
+  return {
+    latency: latencyMatch ? parseFloat(latencyMatch[2]) : 0, // Using average latency
+    packetLoss: packetLossMatch ? parseFloat(packetLossMatch[1]) : 0
+  };
+}
+
 export const networkRoutes: FastifyPluginAsync = async (fastify) => {
+  // Network test endpoint
+  fastify.post('/test', {
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            ping: {
+              type: 'object',
+              properties: {
+                host: { type: 'string' },
+                latency: { type: 'number' },
+                packetLoss: { type: 'number' }
+              },
+              required: ['host', 'latency', 'packetLoss']
+            },
+            speedtest: {
+              type: 'object',
+              properties: {
+                download: { type: 'number' },
+                upload: { type: 'number' },
+                latency: { type: 'number' }
+              },
+              required: ['download', 'upload', 'latency']
+            }
+          },
+          required: ['ping']
+        }
+      }
+    }
+  }, async () => {
+    try {
+      // Basic ping test to Google DNS
+      const { stdout: pingOutput } = await execAsync('ping -c 5 8.8.8.8');
+      const pingStats = analyzePingOutput(pingOutput);
+
+      // Optional speed test (commented out as it requires speedtest-cli)
+      // const { stdout: speedOutput } = await execAsync('speedtest-cli --json');
+      // const speedStats = JSON.parse(speedOutput);
+
+      return {
+        ping: {
+          host: '8.8.8.8',
+          latency: pingStats.latency,
+          packetLoss: pingStats.packetLoss
+        }
+        // Uncomment when speedtest is implemented
+        // speedtest: {
+        //   download: speedStats.download,
+        //   upload: speedStats.upload,
+        //   latency: speedStats.ping
+        // }
+      };
+    } catch (error) {
+      console.error('Network test error:', error);
+      throw new Error('Failed to run network test');
+    }
+  });
+
   // Get network interfaces
   fastify.get('/interfaces', async () => {
     try {

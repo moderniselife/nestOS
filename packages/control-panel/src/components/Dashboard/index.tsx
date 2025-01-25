@@ -18,6 +18,10 @@ import {
   Divider,
   Collapse,
   styled,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -263,6 +267,204 @@ export default function Dashboard() {
     });
   };
 
+  const [statsDialog, setStatsDialog] = useState<{
+    open: boolean;
+    title: string;
+    content: React.ReactNode;
+  }>({ open: false, title: '', content: null });
+
+  const dockerStatsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`${apiUrl}/api/docker/stats`, {
+        method: 'GET',
+      });
+      if (!response.ok) throw new Error('Failed to fetch docker stats');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setStatsDialog({
+        open: true,
+        title: 'Docker Stats',
+        content: (
+          <List>
+            {data.stats.map((stat: any) => (
+              <ListItem key={stat.name}>
+                <ListItemText
+                  primary={stat.name}
+                  secondary={
+                    <Stack spacing={1}>
+                      <Typography variant="body2">CPU: {stat.cpu}</Typography>
+                      <Typography variant="body2">Memory: {stat.memory}</Typography>
+                      <Typography variant="body2">Network I/O: {stat.network}</Typography>
+                      <Typography variant="body2">Disk I/O: {stat.disk}</Typography>
+                    </Stack>
+                  }
+                />
+              </ListItem>
+            ))}
+          </List>
+        ),
+      });
+    },
+  });
+
+  const networkTestMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`${apiUrl}/api/network/test`, {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error('Failed to run network test');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setStatsDialog({
+        open: true,
+        title: 'Network Test Results',
+        content: (
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary">Ping Test</Typography>
+              <Typography>Host: {data.ping.host}</Typography>
+              <Typography>Latency: {data.ping.latency.toFixed(2)}ms</Typography>
+              <Typography>Packet Loss: {data.ping.packetLoss}%</Typography>
+            </Box>
+            {data.speedtest && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">Speed Test</Typography>
+                <Typography>Download: {(data.speedtest.download / 1e6).toFixed(2)} Mbps</Typography>
+                <Typography>Upload: {(data.speedtest.upload / 1e6).toFixed(2)} Mbps</Typography>
+                <Typography>Latency: {data.speedtest.latency}ms</Typography>
+              </Box>
+            )}
+          </Stack>
+        ),
+      });
+    },
+  });
+
+  const storageHealthMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`${apiUrl}/api/storage/health`, {
+        method: 'GET',
+      });
+      if (!response.ok) throw new Error('Failed to check storage health');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setStatsDialog({
+        open: true,
+        title: 'Storage Health Status',
+        content: (
+          <Stack spacing={2}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography>Overall Status:</Typography>
+              <Chip
+                label={data.overall}
+                color={data.overall === 'healthy' ? 'success' : data.overall === 'warning' ? 'warning' : 'error'}
+                size="small"
+              />
+            </Box>
+            <List>
+              {data.devices.map((device: any) => (
+                <ListItem key={device.name}>
+                  <ListItemText
+                    primary={device.name}
+                    secondary={
+                      <Stack spacing={1}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2">Status:</Typography>
+                          <Chip
+                            label={device.status}
+                            color={device.status === 'healthy' ? 'success' : device.status === 'warning' ? 'warning' : 'error'}
+                            size="small"
+                          />
+                        </Box>
+                        {device.smart && (
+                          <>
+                            <Typography variant="body2">SMART Health: {device.smart.health}</Typography>
+                            {device.smart.temperature && (
+                              <Typography variant="body2">Temperature: {device.smart.temperature}°C</Typography>
+                            )}
+                          </>
+                        )}
+                        {device.issues.length > 0 && (
+                          <Typography variant="body2" color="error">
+                            Issues: {device.issues.join(', ')}
+                          </Typography>
+                        )}
+                      </Stack>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Stack>
+        ),
+      });
+    },
+  });
+
+  const performanceTestMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`${apiUrl}/api/system/performance`, {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error('Failed to run performance test');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setStatsDialog({
+        open: true,
+        title: 'Performance Test Results',
+        content: (
+          <Stack spacing={3}>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary">CPU Performance</Typography>
+              <Typography>Single Core: {data.cpu.singleCore.toFixed(2)}ms</Typography>
+              <Typography>Multi Core: {data.cpu.multiCore.toFixed(2)}%</Typography>
+              <Typography>Load Average: {data.cpu.loadAverage.map((load: number) => load.toFixed(2)).join(', ')}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary">Memory Performance</Typography>
+              <Typography>Read Speed: {(data.memory.readSpeed / 1024).toFixed(2)} GB/s</Typography>
+              <Typography>Write Speed: {(data.memory.writeSpeed / 1024).toFixed(2)} GB/s</Typography>
+              <Typography>Latency: {data.memory.latency.toFixed(2)}ms</Typography>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary">Disk Performance</Typography>
+              <Typography>Read Speed: {(data.disk.readSpeed / 1024).toFixed(2)} GB/s</Typography>
+              <Typography>Write Speed: {(data.disk.writeSpeed / 1024).toFixed(2)} GB/s</Typography>
+              <Typography>IOPS: {data.disk.iops.toFixed(0)}</Typography>
+            </Box>
+          </Stack>
+        ),
+      });
+    },
+  });
+
+  const systemLogsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`${apiUrl}/api/system/logs`, {
+        method: 'GET',
+      });
+      if (!response.ok) throw new Error('Failed to fetch system logs');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setStatsDialog({
+        open: true,
+        title: 'System Logs',
+        content: (
+          <Box sx={{ maxHeight: '400px', overflow: 'auto' }}>
+            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
+              {data.logs}
+            </pre>
+          </Box>
+        ),
+      });
+    },
+  });
+
   const rebootMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(`${apiUrl}/api/system/reboot`, {
@@ -312,6 +514,22 @@ export default function Dashboard() {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
+      <Dialog
+        open={statsDialog.open}
+        onClose={() => setStatsDialog({ open: false, title: '', content: null })}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>{statsDialog.title}</DialogTitle>
+        <DialogContent>
+          {statsDialog.content}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStatsDialog({ open: false, title: '', content: null })}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Grid container spacing={3}>
         {/* Quick Actions */}
         <Grid item xs={12}>
@@ -350,46 +568,51 @@ export default function Dashboard() {
               <Grid item xs={12} sm={6} md={3}>
                 <AnimatedButton
                   startIcon={<DockerIcon />}
-                  onClick={() => {/* TODO: Implement */}}
+                  onClick={() => dockerStatsMutation.mutate()}
+                  disabled={dockerStatsMutation.isPending}
                   fullWidth
                 >
-                  Docker Stats
+                  {dockerStatsMutation.isPending ? 'Loading...' : 'Docker Stats'}
                 </AnimatedButton>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <AnimatedButton
                   startIcon={<NetworkIcon />}
-                  onClick={() => {/* TODO: Implement */}}
+                  onClick={() => networkTestMutation.mutate()}
+                  disabled={networkTestMutation.isPending}
                   fullWidth
                 >
-                  Network Test
+                  {networkTestMutation.isPending ? 'Testing...' : 'Network Test'}
                 </AnimatedButton>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <AnimatedButton
                   startIcon={<DiskIcon />}
-                  onClick={() => {/* TODO: Implement */}}
+                  onClick={() => storageHealthMutation.mutate()}
+                  disabled={storageHealthMutation.isPending}
                   fullWidth
                 >
-                  Storage Health
+                  {storageHealthMutation.isPending ? 'Checking...' : 'Storage Health'}
                 </AnimatedButton>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <AnimatedButton
                   startIcon={<SpeedIcon />}
-                  onClick={() => {/* TODO: Implement */}}
+                  onClick={() => performanceTestMutation.mutate()}
+                  disabled={performanceTestMutation.isPending}
                   fullWidth
                 >
-                  Performance Test
+                  {performanceTestMutation.isPending ? 'Testing...' : 'Performance Test'}
                 </AnimatedButton>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <AnimatedButton
                   startIcon={<BuildIcon />}
-                  onClick={() => {/* TODO: Implement */}}
+                  onClick={() => systemLogsMutation.mutate()}
+                  disabled={systemLogsMutation.isPending}
                   fullWidth
                 >
-                  System Logs
+                  {systemLogsMutation.isPending ? 'Loading...' : 'System Logs'}
                 </AnimatedButton>
               </Grid>
             </Grid>

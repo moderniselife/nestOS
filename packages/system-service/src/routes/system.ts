@@ -6,6 +6,59 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+const logsSchema = {
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        logs: { type: 'string' }
+      },
+      required: ['logs']
+    }
+  }
+};
+
+const performanceTestSchema = {
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        cpu: {
+          type: 'object',
+          properties: {
+            singleCore: { type: 'number' },
+            multiCore: { type: 'number' },
+            loadAverage: {
+              type: 'array',
+              items: { type: 'number' }
+            }
+          },
+          required: ['singleCore', 'multiCore', 'loadAverage']
+        },
+        memory: {
+          type: 'object',
+          properties: {
+            readSpeed: { type: 'number' },
+            writeSpeed: { type: 'number' },
+            latency: { type: 'number' }
+          },
+          required: ['readSpeed', 'writeSpeed', 'latency']
+        },
+        disk: {
+          type: 'object',
+          properties: {
+            readSpeed: { type: 'number' },
+            writeSpeed: { type: 'number' },
+            iops: { type: 'number' }
+          },
+          required: ['readSpeed', 'writeSpeed', 'iops']
+        }
+      },
+      required: ['cpu', 'memory', 'disk']
+    }
+  }
+};
+
 const systemInfoSchema = z.object({
   detailed: z
     .string()
@@ -88,6 +141,81 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         images: dockerInfo.images ?? 0
       }
     };
+  });
+
+  // Performance test
+  fastify.post('/performance', { schema: performanceTestSchema }, async () => {
+    try {
+      // CPU Performance Test
+      const cpuTest = await Promise.all([
+        // Single core test (using one worker)
+        new Promise<number>(async (resolve) => {
+          const startTime = process.hrtime.bigint();
+          let operations = 0;
+          for (let i = 0; i < 1000000; i++) {
+            operations += Math.sqrt(i);
+          }
+          const endTime = process.hrtime.bigint();
+          resolve(Number(endTime - startTime) / 1e6); // Convert to milliseconds
+        }),
+        // Multi core test
+        si.currentLoad(),
+        // Load average
+        si.currentLoad().then(load => load.avgLoad)
+      ]);
+
+      // Memory Performance Test
+      const memTest = await Promise.all([
+        // Read speed
+        execAsync('dd if=/dev/zero of=/dev/null bs=1M count=1000'),
+        // Write speed
+        execAsync('dd if=/dev/zero of=/tmp/test bs=1M count=1000 conv=fdatasync'),
+        // Latency (using simple allocation/deallocation)
+        new Promise<number>(async (resolve) => {
+          const startTime = process.hrtime.bigint();
+          const testSize = 1024 * 1024 * 100; // 100MB
+          const buffer = Buffer.alloc(testSize);
+          buffer.fill(0);
+          const endTime = process.hrtime.bigint();
+          resolve(Number(endTime - startTime) / 1e6);
+        })
+      ]);
+
+      // Disk Performance Test
+      const diskTest = await Promise.all([
+        // Read speed
+        execAsync('dd if=/dev/zero of=/tmp/testfile bs=1M count=1000'),
+        execAsync('dd if=/tmp/testfile of=/dev/null bs=1M count=1000'),
+        // IOPS test using fio
+        execAsync('fio --name=randread --ioengine=libaio --direct=1 --bs=4k --iodepth=32 --size=1G --rw=randread --runtime=10 --filename=/tmp/testfile --output-format=json')
+      ]);
+
+      // Clean up test files
+      await execAsync('rm -f /tmp/testfile /tmp/test');
+
+      // Parse results
+      const result = {
+        cpu: {
+          singleCore: cpuTest[0],
+          multiCore: cpuTest[1].currentLoad,
+          loadAverage: Array.isArray(cpuTest[2]) ? cpuTest[2] : [cpuTest[2]]
+        },
+        memory: {
+          readSpeed: parseFloat(memTest[0].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
+          writeSpeed: parseFloat(memTest[1].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
+          latency: memTest[2]
+        },
+        disk: {
+          readSpeed: parseFloat(diskTest[1].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
+          writeSpeed: parseFloat(diskTest[0].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
+          iops: JSON.parse(diskTest[2].stdout).jobs[0].read.iops
+        }
+      };
+
+      return result;
+    } catch (error) {
+      throw new Error(`Performance test failed: ${error}`);
+    }
   });
 
   // Reboot system

@@ -19,6 +19,21 @@ interface MountPoint {
 }
 
 // Validation schemas
+const healthResponseSchema = z.object({
+  overall: z.enum(['healthy', 'warning', 'critical']),
+  devices: z.array(z.object({
+    name: z.string(),
+    status: z.enum(['healthy', 'warning', 'critical']),
+    smart: z.object({
+      health: z.string(),
+      temperature: z.number().optional(),
+      powerOnHours: z.number().optional(),
+      reallocatedSectors: z.number().optional()
+    }).optional(),
+    issues: z.array(z.string())
+  }))
+});
+
 const volumeSchema = z.object({
   name: z.string(),
   type: z.enum(['single', 'raid0', 'raid1', 'raid5', 'raid6', 'raid10']),
@@ -27,7 +42,114 @@ const volumeSchema = z.object({
   filesystem: z.enum(['ext4', 'xfs', 'btrfs', 'zfs']).optional()
 });
 
+function parseSmartOutput(stdout: string) {
+  const temperature = stdout.match(/Temperature_Celsius.*?(\d+)/)?.[1];
+  const powerOnHours = stdout.match(/Power_On_Hours.*?(\d+)/)?.[1];
+  const reallocatedSectors = stdout.match(/Reallocated_Sector_Ct.*?(\d+)/)?.[1];
+
+  return {
+    temperature: temperature ? parseInt(temperature) : undefined,
+    powerOnHours: powerOnHours ? parseInt(powerOnHours) : undefined,
+    reallocatedSectors: reallocatedSectors ? parseInt(reallocatedSectors) : undefined
+  };
+}
+
 export const storageRoutes: FastifyPluginAsync = async (fastify) => {
+  // Get storage health status
+  fastify.get('/health', {
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            overall: { type: 'string', enum: ['healthy', 'warning', 'critical'] },
+            devices: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  status: { type: 'string', enum: ['healthy', 'warning', 'critical'] },
+                  smart: {
+                    type: 'object',
+                    properties: {
+                      health: { type: 'string' },
+                      temperature: { type: 'number' },
+                      powerOnHours: { type: 'number' },
+                      reallocatedSectors: { type: 'number' }
+                    }
+                  },
+                  issues: {
+                    type: 'array',
+                    items: { type: 'string' }
+                  }
+                },
+                required: ['name', 'status', 'issues']
+              }
+            }
+          },
+          required: ['overall', 'devices']
+        }
+      }
+    }
+  }, async () => {
+    try {
+      const blockDevices = await si.blockDevices();
+      const devices = await Promise.all(blockDevices.map(async (device) => {
+        const issues: string[] = [];
+        let smartData = null;
+        let status: 'healthy' | 'warning' | 'critical' = 'healthy';
+
+        try {
+          const { stdout } = await execAsync(`smartctl -H -A /dev/${device.name}`);
+          const health = stdout.includes('PASSED') ? 'PASSED' : 'FAILED';
+          const smartInfo = parseSmartOutput(stdout);
+
+          if (health !== 'PASSED') {
+            status = 'critical';
+            issues.push('SMART health check failed');
+          }
+
+          if (smartInfo.temperature && smartInfo.temperature > 60) {
+            status = status === 'critical' ? 'critical' : 'warning';
+            issues.push(`High temperature: ${smartInfo.temperature}°C`);
+          }
+
+          if (smartInfo.reallocatedSectors && smartInfo.reallocatedSectors > 0) {
+            status = status === 'critical' ? 'critical' : 'warning';
+            issues.push(`Reallocated sectors: ${smartInfo.reallocatedSectors}`);
+          }
+
+          smartData = {
+            health,
+            ...smartInfo
+          };
+        } catch (error) {
+          // SMART might not be available
+          issues.push('SMART data not available');
+        }
+
+        return {
+          name: device.name,
+          status,
+          smart: smartData,
+          issues
+        };
+      }));
+
+      // Determine overall system status
+      const overall = devices.some(d => d.status === 'critical') ? 'critical' :
+                     devices.some(d => d.status === 'warning') ? 'warning' : 'healthy';
+
+      return {
+        overall,
+        devices
+      };
+    } catch (error) {
+      throw new Error(`Failed to check storage health: ${error}`);
+    }
+  });
+
   // Get all storage devices
   fastify.get('/devices', async () => {
     try {

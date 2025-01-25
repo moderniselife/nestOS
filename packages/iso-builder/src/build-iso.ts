@@ -159,15 +159,55 @@ async function createISO() {
       'update-initramfs', '-u'
     ]);
 
-    // Install GRUB
+    // Copy kernel and initrd to ISO directory
+    await fs.ensureDir(path.join(ISO_DIR, 'boot/grub'));
+    await fs.copy(
+      path.join(CHROOT_DIR, 'boot/vmlinuz-*'),
+      path.join(ISO_DIR, 'boot/vmlinuz')
+    );
+    await fs.copy(
+      path.join(CHROOT_DIR, 'boot/initrd.img-*'),
+      path.join(ISO_DIR, 'boot/initrd.img')
+    );
+
+    // Create GRUB configuration
+    await fs.writeFile(
+      path.join(ISO_DIR, 'boot/grub/grub.cfg'),
+      `
+set timeout=5
+set default=0
+
+menuentry "NestOS" {
+  linux /boot/vmlinuz root=/dev/ram0 quiet
+  initrd /boot/initrd.img
+}
+`
+    );
+
+    // Create squashfs of the system
+    await execa('mksquashfs', [
+      CHROOT_DIR,
+      path.join(ISO_DIR, 'live/filesystem.squashfs'),
+      '-comp', 'xz'
+    ]);
+
+    // Create ISO
     await execa('grub-mkrescue', [
       '-o', path.join(BUILD_DIR, 'nestos.iso'),
-      ISO_DIR
+      ISO_DIR,
+      '--verbose'
     ]);
 
     spinner.succeed('ISO image created successfully');
+    
+    // Verify ISO was created
+    const isoExists = await fs.pathExists(path.join(BUILD_DIR, 'nestos.iso'));
+    if (!isoExists) {
+      throw new Error('ISO file was not created');
+    }
   } catch (error) {
     spinner.fail(`Failed to create ISO image: ${error}`);
+    console.error('Full error:', error);
     throw error;
   }
 }

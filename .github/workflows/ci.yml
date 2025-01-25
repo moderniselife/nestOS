@@ -70,12 +70,28 @@ jobs:
             mtools
 
       - name: Build packages
-        run: npm run build
+        run: |
+          echo "Building all packages..."
+          npm run build
+          echo "Verifying built packages..."
+          ls -la packages/control-panel/dist
+          ls -la packages/system-service/dist
 
       - name: Build ISO
         run: |
+          echo "Starting ISO build process..."
           cd packages/iso-builder
-          sudo npm run build:iso
+          sudo npm run build:iso || {
+            echo "ISO build failed. Checking build directory..."
+            sudo ls -la build/
+            echo "Checking build logs..."
+            sudo journalctl -n 100
+            exit 1
+          }
+          echo "ISO build completed. Checking ISO file..."
+          sudo ls -la build/nestos.iso
+          echo "ISO file details:"
+          sudo file build/nestos.iso
 
       - name: Make version script executable
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

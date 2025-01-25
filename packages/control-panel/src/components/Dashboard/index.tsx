@@ -168,7 +168,15 @@ interface StorageDevice {
     health: string;
     attributes: string;
   } | null;
-  layout: any | null;
+  layout: {
+    vendor: string;
+    type: string;
+    size: number;
+    interfaceType: string;
+    temperature: number;
+    serialNum: string;
+    firmwareRevision: string;
+  } | null;
   filesystem: {
     size: number;
     used: number;
@@ -193,7 +201,9 @@ interface NetworkStats {
 
 function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) {
+    return '0 B';
+  }
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
 }
@@ -208,8 +218,38 @@ function formatUptime(seconds: number): string {
 function formatSpeed(bytesPerSecond: number): string {
   return `${(bytesPerSecond / 1024 / 1024).toFixed(2)} MB/s`;
 }
+interface StorageHealthDevice {
+  name: string;
+  status: 'healthy' | 'warning' | 'critical';
+  smart?: {
+    health: string;
+    temperature?: number;
+  };
+  issues: string[];
+}
 
-export default function Dashboard() {
+interface DockerStat {
+  name: string;
+  cpu: string;
+  memory: string;
+  network: string;
+  disk: string;
+}
+
+interface Service {
+  name: string;
+  running: boolean;
+  startmode: string;
+}
+
+interface SystemService {
+  name: string;
+  running: boolean;
+  startmode: string;
+}
+
+
+export default function Dashboard(): JSX.Element {
   const { data: systemInfo, isLoading: systemLoading } = useQuery({
     queryKey: ['system-info'],
     queryFn: async () => {
@@ -278,7 +318,9 @@ export default function Dashboard() {
       const response = await fetch(`${apiUrl}/api/docker/stats`, {
         method: 'GET',
       });
-      if (!response.ok) throw new Error('Failed to fetch docker stats');
+      if (!response.ok) {
+        throw new Error('Failed to fetch docker stats');
+      }
       return response.json();
     },
     onSuccess: (data) => {
@@ -313,7 +355,9 @@ export default function Dashboard() {
       const response = await fetch(`${apiUrl}/api/network/test`, {
         method: 'POST',
       });
-      if (!response.ok) throw new Error('Failed to run network test');
+      if (!response.ok) {
+        throw new Error('Failed to run network test');
+      }
       return response.json();
     },
     onSuccess: (data) => {
@@ -347,7 +391,9 @@ export default function Dashboard() {
       const response = await fetch(`${apiUrl}/api/storage/health`, {
         method: 'GET',
       });
-      if (!response.ok) throw new Error('Failed to check storage health');
+      if (!response.ok) {
+        throw new Error('Failed to check storage health');
+      }
       return response.json();
     },
     onSuccess: (data) => {
@@ -365,7 +411,7 @@ export default function Dashboard() {
               />
             </Box>
             <List>
-              {data.devices.map((device: any) => (
+              {data.devices.map((device: StorageHealthDevice) => (
                 <ListItem key={device.name}>
                   <ListItemText
                     primary={device.name}
@@ -409,7 +455,9 @@ export default function Dashboard() {
       const response = await fetch(`${apiUrl}/api/system/performance`, {
         method: 'POST',
       });
-      if (!response.ok) throw new Error('Failed to run performance test');
+      if (!response.ok) {
+        throw new Error('Failed to run performance test');
+      }
       return response.json();
     },
     onSuccess: (data) => {
@@ -447,7 +495,9 @@ export default function Dashboard() {
       const response = await fetch(`${apiUrl}/api/system/logs`, {
         method: 'GET',
       });
-      if (!response.ok) throw new Error('Failed to fetch system logs');
+      if (!response.ok) {
+        throw new Error('Failed to fetch system logs');
+      }
       return response.json();
     },
     onSuccess: (data) => {
@@ -470,7 +520,9 @@ export default function Dashboard() {
       const response = await fetch(`${apiUrl}/api/system/reboot`, {
         method: 'POST',
       });
-      if (!response.ok) throw new Error('Failed to reboot system');
+      if (!response.ok) {
+        throw new Error('Failed to reboot system');
+      }
       return response.json();
     },
   });
@@ -480,7 +532,9 @@ export default function Dashboard() {
       const response = await fetch(`${apiUrl}/api/system/shutdown`, {
         method: 'POST',
       });
-      if (!response.ok) throw new Error('Failed to shutdown system');
+      if (!response.ok) {
+        throw new Error('Failed to shutdown system');
+      }
       return response.json();
     },
   });
@@ -490,7 +544,9 @@ export default function Dashboard() {
       const response = await fetch(`${apiUrl}/api/system/update`, {
         method: 'POST',
       });
-      if (!response.ok) throw new Error('Failed to update system');
+      if (!response.ok) {
+        throw new Error('Failed to update system');
+      }
       return response.json();
     },
   });
@@ -995,7 +1051,7 @@ export default function Dashboard() {
                   <Typography variant="h6">Services</Typography>
                 </Stack>
                 <List>
-                  {systemInfo.services.map((service: any) => (
+                  {systemInfo.services.map((service: SystemService) => (
                     <ListItem key={service.name}>
                       <ListItemIcon>
                         {service.running ? (

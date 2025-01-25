@@ -30,7 +30,7 @@ const menuItems = [
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' }
 ];
 
-export default function Sidebar() {
+export default function Sidebar(): JSX.Element {
   const theme = useTheme();
   const location = useLocation();
   const navigate = useNavigate();

@@ -65,7 +65,7 @@ function getConnectionStatusColor(state: string): 'success' | 'error' | 'warning
   }
 }
 
-export default function Network() {
+export default function Network(): JSX.Element {
   const queryClient = useQueryClient();
   
   const { data: networkData, isLoading: interfacesLoading } = useQuery({

@@ -19,8 +19,7 @@ import {
   TextField,
   FormControl,
   InputLabel,
-  Divider,
-  Alert
+  Alert,
 } from '@mui/material';
 import {
   Storage as DiskIcon,
@@ -30,7 +29,7 @@ import {
   CheckCircle as HealthyIcon,
   Speed as SpeedIcon,
   Memory as TypeIcon,
-  Link as MountIcon
+  Link as MountIcon,
 } from '@mui/icons-material';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -77,19 +76,27 @@ interface Volume {
 
 function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) {
+    return '0 B';
+  }
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
 }
 
 function getDeviceIcon(device: StorageDevice) {
-  if (device.protocol === 'USB') return 'usb';
-  if (device.protocol === 'NVMe') return 'nvme';
-  if (device.bus === 'scsi') return 'scsi';
+  if (device.protocol === 'USB') {
+    return 'usb';
+  }
+  if (device.protocol === 'NVMe') {
+    return 'nvme';
+  }
+  if (device.bus === 'scsi') {
+    return 'scsi';
+  }
   return 'sata';
 }
 
-export default function Storage() {
+export default function Storage(): JSX.Element {
   const [createVolumeOpen, setCreateVolumeOpen] = useState(false);
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const [volumeType, setVolumeType] = useState<string>('single');
@@ -107,10 +114,14 @@ export default function Storage() {
       }
       return response.json();
     },
-    refetchInterval: 5000
+    refetchInterval: 5000,
   });
 
-  const { data: volumeData, isLoading: volumeLoading, isError: volumeError } = useQuery({
+  const {
+    data: volumeData,
+    isLoading: volumeLoading,
+    isError: volumeError,
+  } = useQuery({
     queryKey: ['storage-volumes'],
     queryFn: async () => {
       try {
@@ -129,7 +140,7 @@ export default function Storage() {
       }
     },
     refetchInterval: 5000,
-    retry: false
+    retry: false,
   });
 
   const handleCreateVolume = async () => {
@@ -137,15 +148,15 @@ export default function Storage() {
       const response = await fetch(`${apiUrl}/api/storage/volumes`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           name: volumeName,
           type: volumeType,
           devices: selectedDevices,
           mountPoint,
-          filesystem
-        })
+          filesystem,
+        }),
       });
 
       if (!response.ok) {
@@ -174,12 +185,7 @@ export default function Storage() {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={3}
-      >
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5">Storage Management</Typography>
         <Button
           variant="contained"
@@ -211,12 +217,7 @@ export default function Storage() {
                         sx={{ ml: 1 }}
                       />
                       {device.removable && (
-                        <Chip
-                          size="small"
-                          label="Removable"
-                          variant="outlined"
-                          sx={{ ml: 1 }}
-                        />
+                        <Chip size="small" label="Removable" variant="outlined" sx={{ ml: 1 }} />
                       )}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
@@ -277,14 +278,13 @@ export default function Storage() {
                               ? 'error.main'
                               : device.filesystem.use > 75
                               ? 'warning.main'
-                              : 'success.main'
-                        }
+                              : 'success.main',
+                        },
                       }}
                     />
                     <Typography variant="body2" sx={{ mt: 1 }}>
-                      {formatBytes(device.filesystem.used)} /{' '}
-                      {formatBytes(device.filesystem.size)} (
-                      {device.filesystem.use}%)
+                      {formatBytes(device.filesystem.used)} / {formatBytes(device.filesystem.size)}{' '}
+                      ({device.filesystem.use}%)
                     </Typography>
                   </Box>
                 )}
@@ -313,12 +313,7 @@ export default function Storage() {
                     <Box sx={{ flexGrow: 1 }}>
                       <Typography variant="h6">
                         {volume.name}
-                        <Chip
-                          size="small"
-                          label={volume.type}
-                          color="primary"
-                          sx={{ ml: 1 }}
-                        />
+                        <Chip size="small" label={volume.type} color="primary" sx={{ ml: 1 }} />
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         {volume.devices.length} devices
@@ -328,12 +323,9 @@ export default function Storage() {
                       color="error"
                       onClick={async () => {
                         try {
-                          await fetch(
-                            `${apiUrl}/api/storage/volumes/${volume.name}`,
-                            {
-                              method: 'DELETE'
-                            }
-                          );
+                          await fetch(`${apiUrl}/api/storage/volumes/${volume.name}`, {
+                            method: 'DELETE',
+                          });
                           // Invalidate queries to refresh data
                           await queryClient.invalidateQueries({ queryKey: ['storage-volumes'] });
                           await queryClient.invalidateQueries({ queryKey: ['storage-devices'] });
@@ -352,12 +344,7 @@ export default function Storage() {
                     </Typography>
                     <Stack direction="row" spacing={1} flexWrap="wrap">
                       {volume.devices.map((device) => (
-                        <Chip
-                          key={device}
-                          label={device}
-                          variant="outlined"
-                          size="small"
-                        />
+                        <Chip key={device} label={device} variant="outlined" size="small" />
                       ))}
                     </Stack>
                   </Box>
@@ -417,7 +404,7 @@ export default function Storage() {
                 value={selectedDevices}
                 label="Devices"
                 onChange={(e) => {
-                  const value = e.target.value;
+                  const { value } = e.target;
                   setSelectedDevices(typeof value === 'string' ? value.split(',') : value);
                 }}
               >
@@ -452,11 +439,15 @@ export default function Storage() {
 
             {volumeType !== 'single' && (
               <Alert severity="info">
-                {volumeType === 'raid0' && 'RAID 0 stripes data across disks for performance but offers no redundancy.'}
+                {volumeType === 'raid0' &&
+                  'RAID 0 stripes data across disks for performance but offers no redundancy.'}
                 {volumeType === 'raid1' && 'RAID 1 mirrors data across disks for redundancy.'}
-                {volumeType === 'raid5' && 'RAID 5 requires at least 3 disks and provides single disk failure protection.'}
-                {volumeType === 'raid6' && 'RAID 6 requires at least 4 disks and provides dual disk failure protection.'}
-                {volumeType === 'raid10' && 'RAID 10 requires at least 4 disks and combines mirroring and striping.'}
+                {volumeType === 'raid5' &&
+                  'RAID 5 requires at least 3 disks and provides single disk failure protection.'}
+                {volumeType === 'raid6' &&
+                  'RAID 6 requires at least 4 disks and provides dual disk failure protection.'}
+                {volumeType === 'raid10' &&
+                  'RAID 10 requires at least 4 disks and combines mirroring and striping.'}
               </Alert>
             )}
           </Stack>

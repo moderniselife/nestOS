@@ -44,7 +44,7 @@ const getPageTitle = (pathname: string): string => {
   }
 };
 
-export default function Layout() {
+export default function Layout(): JSX.Element {
   const theme = useTheme();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);

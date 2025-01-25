@@ -132,7 +132,9 @@ export default function Settings(): JSX.Element {
                   onClick={async () => {
                     try {
                       const response = await fetch(`${apiUrl}/api/system/updates/check`);
-                      if (!response.ok) throw new Error('Failed to check for updates');
+                      if (!response.ok) {
+                        throw new Error('Failed to check for updates');
+                      }
                       const data = await response.json();
                       
                       if (data.updateAvailable) {

@@ -140,9 +140,17 @@ export function setupWebSocketHandlers(fastify: FastifyInstance): void {
     };
 
     // Set up event handlers
-    socket.on('message', async (message: string) => {
+    socket.on('message', async (message: WebSocket.Data) => {
       try {
-        const { type, data } = JSON.parse(message);
+        const messageStr = typeof message === 'string'
+          ? message
+          : message instanceof Buffer
+            ? message.toString('utf8')
+            : message instanceof ArrayBuffer
+              ? Buffer.from(message).toString('utf8')
+              : Buffer.concat(message as Buffer[]).toString('utf8');
+
+        const { type, data } = JSON.parse(messageStr);
 
         switch (type) {
           case 'start_metrics':

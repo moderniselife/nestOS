@@ -50,7 +50,7 @@ function getContainerStatusColor(state: string): 'success' | 'error' | 'warning'
   }
 }
 
-export default function Docker() {
+export default function Docker(): JSX.Element {
   const { data: containers, isLoading } = useQuery({
     queryKey: ['docker-containers'],
     queryFn: async () => {

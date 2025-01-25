@@ -46,8 +46,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for git diff
-          token: ${{ secrets.GITHUB_TOKEN }}  # Use token for push access
+          fetch-depth: 0 # Fetch all history for git diff
+          token: ${{ secrets.GITHUB_TOKEN }} # Use token for push access
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -67,7 +67,18 @@ jobs:
             xorriso \
             grub-pc-bin \
             grub-efi-amd64-bin \
-            mtools
+            mtools \
+            tree \
+            file
+
+          echo "Verifying installed tools:"
+          which debootstrap squashfs-tools xorriso grub-mkrescue mksquashfs tree file
+
+          echo "Tool versions:"
+          debootstrap --version
+          mksquashfs -version
+          xorriso -version
+          grub-mkrescue --version
 
       - name: Build packages
         run: |
@@ -81,17 +92,47 @@ jobs:
         run: |
           echo "Starting ISO build process..."
           cd packages/iso-builder
-          sudo npm run build:iso || {
-            echo "ISO build failed. Checking build directory..."
+
+          # Create build directory with proper permissions and structure
+          sudo mkdir -p build/{iso/boot/grub,iso/live,chroot}
+          sudo chmod -R 777 build
+
+          # Run build with debug output
+          DEBUG=* sudo -E npm run build:iso || {
+            echo "ISO build failed. Checking environment..."
+            echo "Full directory structure:"
+            sudo tree -a build/
+            
+            echo "Checking file permissions:"
             sudo ls -la build/
-            echo "Checking build logs..."
+            sudo ls -la build/iso/
+            sudo ls -la build/iso/boot/
+            
+            echo "Checking if required tools are installed:"
+            which debootstrap squashfs-tools xorriso grub-mkrescue
+            
+            echo "Checking system resources:"
+            df -h
+            free -h
+            
+            echo "System logs:"
             sudo journalctl -n 100
+            
+            echo "Process logs:"
+            ps aux | grep build
             exit 1
           }
+
+          echo "Build completed. Full directory structure:"
+          sudo tree -a build/
+
           echo "ISO build completed. Checking ISO file..."
           sudo ls -la build/nestos.iso
           echo "ISO file details:"
           sudo file build/nestos.iso
+
+          echo "ISO contents:"
+          sudo xorriso -indev build/nestos.iso -list-extents
 
       - name: Make version script executable
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -138,7 +179,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for git diff
+          fetch-depth: 0 # Fetch all history for git diff
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

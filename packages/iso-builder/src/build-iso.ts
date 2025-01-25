@@ -1,4 +1,5 @@
 import { execa } from 'execa';
+import type { ExecaError } from 'execa';
 import fs from 'fs-extra';
 import path from 'path';
 import ora from 'ora';
@@ -15,12 +16,41 @@ const CHROOT_DIR = path.join(BUILD_DIR, 'chroot');
 async function setupBuildEnvironment() {
   const spinner = ora('Setting up build environment').start();
   try {
-    await fs.remove(BUILD_DIR);
+    // Remove existing build directory if it exists
+    if (await fs.pathExists(BUILD_DIR)) {
+      spinner.text = 'Removing existing build directory...';
+      await fs.remove(BUILD_DIR);
+    }
+
+    // Create build directories with proper permissions
+    spinner.text = 'Creating build directories...';
+    await fs.ensureDir(BUILD_DIR);
     await fs.ensureDir(ISO_DIR);
     await fs.ensureDir(CHROOT_DIR);
+    await fs.ensureDir(path.join(ISO_DIR, 'boot/grub'));
+    await fs.ensureDir(path.join(ISO_DIR, 'live'));
+
+    // Set proper permissions
+    spinner.text = 'Setting permissions...';
+    await execa('chmod', ['-R', '777', BUILD_DIR]);
+
+    // Verify directories were created
+    const dirs = [BUILD_DIR, ISO_DIR, CHROOT_DIR];
+    for (const dir of dirs) {
+      if (!await fs.pathExists(dir)) {
+        throw new Error(`Failed to create directory: ${dir}`);
+      }
+    }
+
     spinner.succeed('Build environment setup complete');
+    
+    // Log directory structure
+    console.log('\nBuild directory structure:');
+    const { stdout } = await execa('tree', [BUILD_DIR]);
+    console.log(stdout);
   } catch (error) {
     spinner.fail(`Failed to setup build environment: ${error}`);
+    console.error('Full error:', error);
     throw error;
   }
 }
@@ -154,26 +184,36 @@ async function createISO() {
   const spinner = ora('Creating ISO image').start();
   try {
     // Generate initramfs
-    await execa('chroot', [
+    spinner.text = 'Generating initramfs...';
+    const initramfsResult = await execa('chroot', [
       CHROOT_DIR,
-      'update-initramfs', '-u'
+      'update-initramfs', '-u', '-v'  // Added verbose flag
     ]);
+    console.log('Initramfs output:', initramfsResult.stdout);
 
-    // Copy kernel and initrd to ISO directory
-    await fs.ensureDir(path.join(ISO_DIR, 'boot/grub'));
+    // Find and copy kernel and initrd
+    spinner.text = 'Copying kernel and initrd...';
+    const bootFiles = await fs.readdir(path.join(CHROOT_DIR, 'boot'));
+    
+    const kernelFile = bootFiles.find(file => file.startsWith('vmlinuz-'));
+    const initrdFile = bootFiles.find(file => file.startsWith('initrd.img-'));
+    
+    if (!kernelFile || !initrdFile) {
+      throw new Error('Kernel or initrd files not found');
+    }
+
     await fs.copy(
-      path.join(CHROOT_DIR, 'boot/vmlinuz-*'),
+      path.join(CHROOT_DIR, 'boot', kernelFile),
       path.join(ISO_DIR, 'boot/vmlinuz')
     );
     await fs.copy(
-      path.join(CHROOT_DIR, 'boot/initrd.img-*'),
+      path.join(CHROOT_DIR, 'boot', initrdFile),
       path.join(ISO_DIR, 'boot/initrd.img')
     );
 
     // Create GRUB configuration
-    await fs.writeFile(
-      path.join(ISO_DIR, 'boot/grub/grub.cfg'),
-      `
+    spinner.text = 'Creating GRUB configuration...';
+    const grubConfig = `
 set timeout=5
 set default=0
 
@@ -181,33 +221,55 @@ menuentry "NestOS" {
   linux /boot/vmlinuz root=/dev/ram0 quiet
   initrd /boot/initrd.img
 }
-`
-    );
+`;
+    await fs.writeFile(path.join(ISO_DIR, 'boot/grub/grub.cfg'), grubConfig);
 
     // Create squashfs of the system
-    await execa('mksquashfs', [
+    spinner.text = 'Creating squashfs filesystem...';
+    await fs.ensureDir(path.join(ISO_DIR, 'live'));
+    const squashfsResult = await execa('mksquashfs', [
       CHROOT_DIR,
       path.join(ISO_DIR, 'live/filesystem.squashfs'),
-      '-comp', 'xz'
+      '-comp', 'xz',
+      '-info'  // Added info flag for more output
     ]);
+    console.log('Squashfs creation output:', squashfsResult.stdout);
+
+    // List files before creating ISO
+    spinner.text = 'Verifying ISO directory structure...';
+    const { stdout: treeOutput } = await execa('tree', [ISO_DIR]);
+    console.log('ISO directory structure:', treeOutput);
 
     // Create ISO
-    await execa('grub-mkrescue', [
+    spinner.text = 'Creating final ISO image...';
+    const grubResult = await execa('grub-mkrescue', [
       '-o', path.join(BUILD_DIR, 'nestos.iso'),
       ISO_DIR,
       '--verbose'
     ]);
+    console.log('GRUB mkrescue output:', grubResult.stdout);
 
-    spinner.succeed('ISO image created successfully');
-    
-    // Verify ISO was created
+    // Verify ISO was created and get its size
     const isoExists = await fs.pathExists(path.join(BUILD_DIR, 'nestos.iso'));
     if (!isoExists) {
       throw new Error('ISO file was not created');
     }
+
+    const isoStats = await fs.stat(path.join(BUILD_DIR, 'nestos.iso'));
+    console.log(`ISO file created successfully. Size: ${(isoStats.size / 1024 / 1024).toFixed(2)} MB`);
+
+    spinner.succeed('ISO image created successfully');
   } catch (error) {
-    spinner.fail(`Failed to create ISO image: ${error}`);
-    console.error('Full error:', error);
+    spinner.fail(`Failed to create ISO image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Full error details:');
+    
+    if (error && typeof error === 'object') {
+      // Safe type assertion since we checked it's an object
+      const err = error as { [key: string]: unknown };
+      if ('stdout' in err) console.error('Command output:', err.stdout);
+      if ('stderr' in err) console.error('Command error:', err.stderr);
+    }
+    
     throw error;
   }
 }

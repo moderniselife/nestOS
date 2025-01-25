@@ -58,17 +58,64 @@ async function setupBuildEnvironment() {
 async function downloadBaseSystem() {
   const spinner = ora('Downloading Debian base system').start();
   try {
-    await execa('debootstrap', [
+    console.log('\nStarting debootstrap with following parameters:');
+    console.log('Architecture: amd64');
+    console.log('Variant: minbase');
+    console.log('Distribution: bookworm');
+    console.log('Target directory:', CHROOT_DIR);
+    console.log('Mirror: http://deb.debian.org/debian');
+
+    // First check if debootstrap is available
+    try {
+      await execa('which', ['debootstrap']);
+    } catch (error) {
+      throw new Error('debootstrap is not installed or not in PATH');
+    }
+
+    // Check if target directory is writable
+    try {
+      await fs.access(CHROOT_DIR, fs.constants.W_OK);
+    } catch (error) {
+      throw new Error(`Target directory ${CHROOT_DIR} is not writable`);
+    }
+
+    // Run debootstrap with verbose output
+    const debootstrap = execa('debootstrap', [
       '--arch=amd64',
       '--variant=minbase',
+      '--verbose',
       'bookworm',
       CHROOT_DIR,
       'http://deb.debian.org/debian'
     ]);
+
+    // Stream output in real-time
+    if (debootstrap.stdout) {
+      debootstrap.stdout.pipe(process.stdout);
+    }
+    if (debootstrap.stderr) {
+      debootstrap.stderr.pipe(process.stderr);
+    }
+
+    await debootstrap;
+
+    // Verify the chroot was created properly
+    const chrootFiles = await fs.readdir(CHROOT_DIR);
+    console.log('\nFiles in chroot directory:', chrootFiles);
+    
+    if (!chrootFiles.includes('bin') || !chrootFiles.includes('etc')) {
+      throw new Error('Chroot directory is missing essential system directories');
+    }
+
     spinner.succeed('Base system downloaded');
   } catch (error) {
     spinner.fail(`Failed to download base system: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    console.error('Full error:', error);
+    console.error('\nFull error details:');
+    if (error && typeof error === 'object') {
+      const err = error as { [key: string]: unknown };
+      if ('stdout' in err) console.error('Command output:', err.stdout);
+      if ('stderr' in err) console.error('Command error:', err.stderr);
+    }
     throw error;
   }
 }

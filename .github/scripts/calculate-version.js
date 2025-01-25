@@ -3,13 +3,17 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 
+// Get the root directory of the repository
+const rootDir = execSync('git rev-parse --show-toplevel').toString().trim();
+
 // Get the current version from package.json
-const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+const packageJsonPath = `${rootDir}/package.json`;
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 const currentVersion = packageJson.version;
 const [major, minor, patch] = currentVersion.split('.').map(Number);
 
 // Get the diff stats
-const diffStats = execSync('git diff --shortstat HEAD^ HEAD || true').toString();
+const diffStats = execSync('git diff --shortstat HEAD^ HEAD || git diff --shortstat', { cwd: rootDir }).toString();
 const match = diffStats.match(/(\d+) files? changed(?:, (\d+) insertions?\(\+\))?(?:, (\d+) deletions?\(-\))?/);
 
 if (!match) {
@@ -34,9 +38,25 @@ if (totalChanges > 1000) {
   newVersion = `${major}.${minor}.${patch + 1}`;
 }
 
-// Update package.json
-packageJson.version = newVersion;
-fs.writeFileSync('package.json', JSON.stringify(packageJson, null, 2) + '\n');
+try {
+  // Update package.json
+  packageJson.version = newVersion;
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
 
-// Output the new version for GitHub Actions
-console.log(newVersion);
+  // Also update the version in the workspace packages
+  const workspacePackages = ['control-panel', 'system-service', 'iso-builder'];
+  for (const pkg of workspacePackages) {
+    const pkgPath = `${rootDir}/packages/${pkg}/package.json`;
+    if (fs.existsSync(pkgPath)) {
+      const pkgJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      pkgJson.version = newVersion;
+      fs.writeFileSync(pkgPath, JSON.stringify(pkgJson, null, 2) + '\n');
+    }
+  }
+
+  // Output the new version for GitHub Actions
+  console.log(newVersion);
+} catch (error) {
+  console.error('Error updating version:', error);
+  process.exit(1);
+}

@@ -1,5 +1,4 @@
 import { execa } from 'execa';
-import type { ExecaError } from 'execa';
 import fs from 'fs-extra';
 import path from 'path';
 import ora from 'ora';
@@ -43,7 +42,7 @@ async function setupBuildEnvironment() {
     }
 
     spinner.succeed('Build environment setup complete');
-    
+
     // Log directory structure
     console.log('\nBuild directory structure:');
     const { stdout } = await execa('tree', [BUILD_DIR]);
@@ -194,10 +193,10 @@ async function createISO() {
     // Find and copy kernel and initrd
     spinner.text = 'Copying kernel and initrd...';
     const bootFiles = await fs.readdir(path.join(CHROOT_DIR, 'boot'));
-    
+
     const kernelFile = bootFiles.find(file => file.startsWith('vmlinuz-'));
     const initrdFile = bootFiles.find(file => file.startsWith('initrd.img-'));
-    
+
     if (!kernelFile || !initrdFile) {
       throw new Error('Kernel or initrd files not found');
     }
@@ -262,14 +261,14 @@ menuentry "NestOS" {
   } catch (error) {
     spinner.fail(`Failed to create ISO image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     console.error('Full error details:');
-    
+
     if (error && typeof error === 'object') {
       // Safe type assertion since we checked it's an object
       const err = error as { [key: string]: unknown };
       if ('stdout' in err) console.error('Command output:', err.stdout);
       if ('stderr' in err) console.error('Command error:', err.stderr);
     }
-    
+
     throw error;
   }
 }

@@ -24,43 +24,42 @@ npm install
 # Set up git hooks
 echo -e "\n${BLUE}Setting up git hooks...${NC}"
 if [ -d .git ]; then
-    # Create hooks directory if it doesn't exist s
+    # Create hooks directory if it doesn't exist 
     mkdir -p .git/hooks
     
+    # Get the full path to npm and node
+    NPM_PATH=$(which npm)
+    NODE_PATH=$(which node)
+    
     # Pre-commit hook for linting
-    # Create pre-commit hook with environment loading
-    cat > .git/hooks/pre-commit << 'EOF'
-#!/bin/bash
+    cat > .git/hooks/pre-commit << EOF
+#!/bin/sh
 
-# Source profile to get proper environment
-if [ -f ~/.zshrc ]; then
-    source ~/.zshrc
-elif [ -f ~/.bash_profile ]; then
-    source ~/.bash_profile
-elif [ -f ~/.bashrc ]; then
-    source ~/.bashrc
-fi
+# Debug information
+echo "Debug: Starting pre-commit hook"
+echo "Debug: Current PATH=\$PATH"
 
-# Try to use nvm if available
-if [ -f ~/.nvm/nvm.sh ]; then
-    source ~/.nvm/nvm.sh
-    nvm use default > /dev/null 2>&1
-fi
+# Get the git repo root directory
+REPO_ROOT=\$(git rev-parse --show-toplevel)
+echo "Debug: REPO_ROOT=\$REPO_ROOT"
 
-# Check if npm exists
-if ! command -v npm > /dev/null 2>&1; then
-    echo "Error: npm not found. Please ensure Node.js is installed and in your PATH"
+# Change to the repo root directory
+cd "\$REPO_ROOT"
+
+# Export paths to node and npm
+export PATH="$(dirname "$NODE_PATH"):\$PATH"
+echo "Debug: Updated PATH=\$PATH"
+echo "Debug: Node path: $NODE_PATH"
+echo "Debug: NPM path: $NPM_PATH"
+
+# Run lint command
+echo "Debug: Running lint command..."
+if ! "$NPM_PATH" run lint; then
+    echo "Linting failed. Please fix the issues and try committing again."
     exit 1
 fi
 
-# Get the git repo root directory
-REPO_ROOT=$(git rev-parse --show-toplevel)
-
-# Change to the repo root directory
-cd "$REPO_ROOT"
-
-# Run lint command
-npm run lint
+echo "Debug: Lint command completed successfully"
 EOF
     chmod +x .git/hooks/pre-commit
 fi

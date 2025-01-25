@@ -5,15 +5,15 @@ import Docker from 'dockerode';
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
 // Stats response schema
-const statsResponseSchema = z.object({
-  stats: z.array(z.object({
-    name: z.string(),
-    cpu: z.string(),
-    memory: z.string(),
-    network: z.string(),
-    disk: z.string()
-  }))
-});
+// const statsResponseSchema = z.object({
+//   stats: z.array(z.object({
+//     name: z.string(),
+//     cpu: z.string(),
+//     memory: z.string(),
+//     network: z.string(),
+//     disk: z.string()
+//   }))
+// });
 
 const containerSchema = z.object({
   image: z.string(),
@@ -58,7 +58,7 @@ const plugin: FastifyPluginAsync = async (fastify) => {
         }
       }
     }
-  }, async (request, reply) => {
+  }, async () => {
     try {
       const containers = await docker.listContainers();
       const stats = await Promise.all(containers.map(async (containerInfo) => {
@@ -69,7 +69,7 @@ const plugin: FastifyPluginAsync = async (fastify) => {
         const memoryUsage = formatMemoryUsage(stats);
         const networkIO = formatNetworkIO(stats);
         const blockIO = formatBlockIO(stats);
-        
+
         return {
           name,
           cpu: `${cpuPercent.toFixed(2)}%`,
@@ -78,7 +78,7 @@ const plugin: FastifyPluginAsync = async (fastify) => {
           disk: blockIO
         };
       }));
-      
+
       return { stats };
     } catch (error) {
       console.error('Error fetching Docker stats:', error);
@@ -87,28 +87,48 @@ const plugin: FastifyPluginAsync = async (fastify) => {
   });
 
   // Helper functions for stats calculations
-  function calculateCPUPercentage(stats: any) {
-    const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
+  function calculateCPUPercentage(stats: {
+    cpu_stats: {
+      cpu_usage: {
+        total_usage: number;
+      };
+      system_cpu_usage: number;
+      online_cpus: number;
+    };
+    precpu_stats: {
+      cpu_usage: {
+        total_usage: number;
+      };
+      system_cpu_usage: number;
+    };
+  }) {
+    const cpuDelta =
+      stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
     const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
     const cpuCount = stats.cpu_stats.online_cpus;
-    
+
     return (cpuDelta / systemDelta) * cpuCount * 100;
   }
 
-  function formatMemoryUsage(stats: any) {
+  function formatMemoryUsage(stats: {
+    memory_stats: {
+      usage: number;
+      limit: number;
+    };
+  }) {
     const used = stats.memory_stats.usage;
     const limit = stats.memory_stats.limit;
     const percent = ((used / limit) * 100).toFixed(2);
     return `${formatBytes(used)} / ${formatBytes(limit)} (${percent}%)`;
   }
 
-  function formatNetworkIO(stats: any) {
+  function formatNetworkIO(stats: { networks: { [key: string]: { rx_bytes: number; tx_bytes: number } } }) {
     const rx = Object.values(stats.networks || {}).reduce((acc: number, net: any) => acc + net.rx_bytes, 0);
     const tx = Object.values(stats.networks || {}).reduce((acc: number, net: any) => acc + net.tx_bytes, 0);
     return `↓${formatBytes(rx)} / ↑${formatBytes(tx)}`;
   }
 
-  function formatBlockIO(stats: any) {
+  function formatBlockIO(stats: { blkio_stats: { io_service_bytes_recursive: any[] } }) {
     const read = stats.blkio_stats.io_service_bytes_recursive?.find((s: any) => s.op === 'Read')?.value || 0;
     const write = stats.blkio_stats.io_service_bytes_recursive?.find((s: any) => s.op === 'Write')?.value || 0;
     return `↓${formatBytes(read)} / ↑${formatBytes(write)}`;
@@ -169,7 +189,7 @@ export const dockerRoutes: FastifyPluginAsync = async (fastify) => {
 
     const portBindings: Docker.PortMap = {};
     const exposedPorts: { [key: string]: {} } = {};
-    
+
     ports?.forEach(({ container, host }) => {
       const portStr = `${container}/tcp`;
       exposedPorts[portStr] = {};

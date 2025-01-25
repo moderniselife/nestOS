@@ -14,13 +14,15 @@ import {
   Memory as SystemIcon,
   Cloud as DockerIcon,
   NetworkCheck as NetworkIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Dashboard as DashboardIcon
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../../App';
 
 const menuItems = [
-  { text: 'System', icon: <SystemIcon />, path: '/system' },
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Storage', icon: <StorageIcon />, path: '/storage' },
   { text: 'Docker', icon: <DockerIcon />, path: '/docker' },
   { text: 'Network', icon: <NetworkIcon />, path: '/network' },
@@ -29,6 +31,8 @@ const menuItems = [
 
 export default function Sidebar() {
   const theme = useTheme();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const { data: systemInfo } = useQuery({
     queryKey: ['system-info'],
@@ -60,9 +64,33 @@ export default function Sidebar() {
       <List>
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
-            <ListItemButton>
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
+            <ListItemButton
+              selected={location.pathname === item.path}
+              onClick={() => navigate(item.path)}
+              sx={{
+                '&.Mui-selected': {
+                  backgroundColor: 'rgba(33, 150, 243, 0.08)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(33, 150, 243, 0.12)'
+                  }
+                }
+              }}
+            >
+              <ListItemIcon
+                sx={{
+                  color: location.pathname === item.path ? 'primary.main' : 'inherit'
+                }}
+              >
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText 
+                primary={item.text}
+                sx={{
+                  '& .MuiTypography-root': {
+                    color: location.pathname === item.path ? 'primary.main' : 'inherit'
+                  }
+                }}
+              />
             </ListItemButton>
           </ListItem>
         ))}

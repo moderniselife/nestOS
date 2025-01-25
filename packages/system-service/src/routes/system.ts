@@ -7,7 +7,11 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 const systemInfoSchema = z.object({
-  detailed: z.boolean().optional().default(false)
+  detailed: z
+    .string()
+    .optional()
+    .transform((val) => val === 'true')
+    .pipe(z.boolean().optional().default(false))
 });
 
 export const systemRoutes: FastifyPluginAsync = async (fastify) => {

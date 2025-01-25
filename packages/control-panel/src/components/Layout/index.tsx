@@ -7,33 +7,68 @@ import {
   IconButton,
   Drawer,
   useTheme,
-  CircularProgress
+  CircularProgress,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useQuery } from '@tanstack/react-query';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from '../Sidebar';
+import Dashboard from '../Dashboard';
+import Storage from '../Storage';
+import Docker from '../Docker';
+import Network from '../Network';
+import Settings from '../Settings';
 import { apiUrl } from '../../App';
 
 const drawerWidth = 240;
 
+const getPageTitle = (pathname: string): string => {
+  switch (pathname) {
+    case '/':
+      return 'Dashboard';
+    case '/storage':
+      return 'Storage Management';
+    case '/docker':
+      return 'Docker Containers';
+    case '/network':
+      return 'Network Settings';
+    case '/settings':
+      return 'System Settings';
+    default:
+      return 'NASOS Control Panel';
+  }
+};
+
 export default function Layout() {
   const theme = useTheme();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const { data: systemInfo, isLoading: systemLoading } = useQuery({
     queryKey: ['system-info'],
     queryFn: async () => {
-      const response = await fetch(`${apiUrl}/api/system/info`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch system info');
+      try {
+        const response = await fetch(`${apiUrl}/api/system/info`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch system info');
+        }
+        return response.json();
+      } catch (error) {
+        setError('Failed to connect to system service');
+        throw error;
       }
-      return response.json();
-    },
-    refetchInterval: 5000 // Refresh every 5 seconds
+    }
   });
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleCloseError = () => {
+    setError(null);
   };
 
   return (
@@ -56,7 +91,7 @@ export default function Layout() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            NASOS Control Panel
+            {getPageTitle(location.pathname)}
           </Typography>
           {systemLoading ? (
             <CircularProgress color="inherit" size={24} sx={{ ml: 2 }} />
@@ -114,15 +149,26 @@ export default function Layout() {
           mt: '64px' // AppBar height
         }}
       >
-        {/* Main content will go here */}
-        {systemLoading ? (
-          <Box display="flex" justifyContent="center" mt={4}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <pre>{JSON.stringify(systemInfo, null, 2)}</pre>
-        )}
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/storage" element={<Storage />} />
+          <Route path="/docker" element={<Docker />} />
+          <Route path="/network" element={<Network />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </Box>
+
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

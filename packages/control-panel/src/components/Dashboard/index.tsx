@@ -44,7 +44,7 @@ import {
 } from '@mui/icons-material';
 
 function calculateDeviceUsage(devices: StorageDevice[]) {
-  const partitions = devices.filter(dev => dev.type === 'part');
+  const partitions = devices.filter((dev) => dev.type === 'part');
   const totalUsed = partitions.reduce((acc, dev) => {
     if (dev.filesystem?.used) {
       console.log(`Partition ${dev.name}: filesystem used=${dev.filesystem.used}`);
@@ -58,29 +58,29 @@ function calculateDeviceUsage(devices: StorageDevice[]) {
   }, 0);
   const totalSize = devices[0].size;
   const usagePercent = Math.round((totalUsed / totalSize) * 100);
-  
+
   return { totalUsed, totalSize, usagePercent };
 }
 
 function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]> {
   const groups: Record<string, StorageDevice[]> = {};
-  
+
   // First, find all physical disk devices
-  devices.forEach(device => {
+  devices.forEach((device) => {
     if (device.type === 'disk' && device.physical === 'SSD') {
       groups[device.name] = [device];
     }
   });
 
   // Then, add direct partitions to their parent disks
-  devices.forEach(device => {
+  devices.forEach((device) => {
     if (device.type === 'part' && device.device && groups[device.device]) {
       groups[device.device].push(device);
     }
   });
 
   // Filter out empty groups and sort partitions by name
-  Object.keys(groups).forEach(key => {
+  Object.keys(groups).forEach((key) => {
     if (groups[key].length === 0) {
       delete groups[key];
     } else {
@@ -199,7 +199,7 @@ export default function Dashboard() {
   const itemsPerPage = 4; // Number of disk groups per page
 
   const toggleDevice = (deviceName: string) => {
-    setExpandedDevices(prev => {
+    setExpandedDevices((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(deviceName)) {
         newSet.delete(deviceName);
@@ -332,7 +332,80 @@ export default function Dashboard() {
           </Paper>
         </Grid>
 
-        {/* CPU and Memory */}
+        {/* Network Status */}
+        {networkStats?.stats && networkStats.stats.length > 0 && (
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+                  <NetworkIcon color="primary" />
+                  <Typography variant="h6">Network</Typography>
+                </Stack>
+                {networkStats.stats.map((stat: NetworkStat) => (
+                  <Box key={stat.iface} sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2">{stat.iface}</Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">
+                          Download
+                        </Typography>
+                        <Typography variant="body1">{formatSpeed(stat.rx_sec)}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">
+                          Upload
+                        </Typography>
+                        <Typography variant="body1">{formatSpeed(stat.tx_sec)}</Typography>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                ))}
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Memory */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+                <RamIcon color="primary" />
+                <Typography variant="h6">Memory</Typography>
+              </Stack>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Usage
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={memoryUsagePercent}
+                  sx={{ height: 10, borderRadius: 5 }}
+                />
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  {formatBytes(systemInfo.memory.used)} / {formatBytes(systemInfo.memory.total)} (
+                  {memoryUsagePercent}%)
+                </Typography>
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Stack direction="row" spacing={1}>
+                  <Chip
+                    label={`${formatBytes(systemInfo.memory.free)} Free`}
+                    size="small"
+                    variant="outlined"
+                  />
+                  <Chip
+                    label={`${formatBytes(systemInfo.memory.available)} Available`}
+                    size="small"
+                    variant="outlined"
+                  />
+                </Stack>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Memory */}
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
@@ -383,45 +456,6 @@ export default function Dashboard() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-                <RamIcon color="primary" />
-                <Typography variant="h6">Memory</Typography>
-              </Stack>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Usage
-                </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={memoryUsagePercent}
-                  sx={{ height: 10, borderRadius: 5 }}
-                />
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  {formatBytes(systemInfo.memory.used)} / {formatBytes(systemInfo.memory.total)} (
-                  {memoryUsagePercent}%)
-                </Typography>
-              </Box>
-              <Box sx={{ mt: 2 }}>
-                <Stack direction="row" spacing={1}>
-                  <Chip
-                    label={`${formatBytes(systemInfo.memory.free)} Free`}
-                    size="small"
-                    variant="outlined"
-                  />
-                  <Chip
-                    label={`${formatBytes(systemInfo.memory.available)} Available`}
-                    size="small"
-                    variant="outlined"
-                  />
-                </Stack>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
         {/* Storage Status */}
         <Grid item xs={12}>
           <Card>
@@ -434,7 +468,7 @@ export default function Dashboard() {
                   <IconButton
                     size="small"
                     onClick={() => setShowSystemPartitions(!showSystemPartitions)}
-                    color={showSystemPartitions ? "primary" : "default"}
+                    color={showSystemPartitions ? 'primary' : 'default'}
                   >
                     <BuildIcon />
                   </IconButton>
@@ -443,7 +477,7 @@ export default function Dashboard() {
                   <IconButton
                     size="small"
                     onClick={() => setCompactView(!compactView)}
-                    color={compactView ? "primary" : "default"}
+                    color={compactView ? 'primary' : 'default'}
                   >
                     <ViewCompactIcon />
                   </IconButton>
@@ -453,7 +487,7 @@ export default function Dashboard() {
                 <Typography color="text.secondary">No storage devices found</Typography>
               ) : (
                 <>
-                  <Box sx={{ height: '400px', overflowY: 'auto', mb: 2 }}>
+                  <Box sx={{ minHeight: 'auto', maxHeight: '400px', overflowY: 'auto', mb: 2 }}>
                     {Object.entries(groupDevices(storageInfo.devices))
                       .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
                       .map(([diskName, devices]) => (
@@ -462,7 +496,7 @@ export default function Dashboard() {
                             sx={{
                               display: 'flex',
                               alignItems: 'center',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
                             }}
                             onClick={() => toggleDevice(diskName)}
                           >
@@ -476,7 +510,9 @@ export default function Dashboard() {
                                     size="small"
                                     sx={{ ml: 1 }}
                                     label={devices[0].smart.health}
-                                    color={devices[0].smart.health === 'PASSED' ? 'success' : 'error'}
+                                    color={
+                                      devices[0].smart.health === 'PASSED' ? 'success' : 'error'
+                                    }
                                   />
                                 )}
                               </Box>
@@ -491,31 +527,40 @@ export default function Dashboard() {
                                         console.log('Using main device filesystem:', {
                                           name: mainDevice.name,
                                           used: mainDevice.filesystem.used,
-                                          size: mainDevice.size
+                                          size: mainDevice.size,
                                         });
                                         totalUsed = mainDevice.filesystem.used;
                                       } else {
-                                        const partitions = devices.filter(dev =>
-                                          dev.type === 'part' &&
-                                          dev.filesystem?.used !== undefined &&
-                                          !dev.mount?.includes('boot') &&
-                                          !dev.mount?.includes('efi')
+                                        const partitions = devices.filter(
+                                          (dev) =>
+                                            dev.type === 'part' &&
+                                            dev.filesystem?.used !== undefined &&
+                                            !dev.mount?.includes('boot') &&
+                                            !dev.mount?.includes('efi')
                                         );
-                                        console.log('Using partitions:', partitions.map(p => ({
-                                          name: p.name,
-                                          mount: p.mount,
-                                          used: p.filesystem?.used,
-                                          size: p.size
-                                        })));
-                                        totalUsed = partitions.reduce((acc, dev) =>
-                                          acc + dev.filesystem!.used, 0
+                                        console.log(
+                                          'Using partitions:',
+                                          partitions.map((p) => ({
+                                            name: p.name,
+                                            mount: p.mount,
+                                            used: p.filesystem?.used,
+                                            size: p.size,
+                                          }))
+                                        );
+                                        totalUsed = partitions.reduce(
+                                          (acc, dev) => acc + dev.filesystem!.used,
+                                          0
                                         );
                                       }
                                       return Math.round((totalUsed / mainDevice.size) * 100);
                                     })()}
                                     sx={{ height: 6, borderRadius: 3, mt: 1 }}
                                   />
-                                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.75rem' }}>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ mt: 0.5, fontSize: '0.75rem' }}
+                                  >
                                     {(() => {
                                       let totalUsed = 0;
                                       const mainDevice = devices[0];
@@ -523,28 +568,41 @@ export default function Dashboard() {
                                         console.log('Using main device filesystem:', {
                                           name: mainDevice.name,
                                           used: mainDevice.filesystem.used,
-                                          size: mainDevice.size
+                                          size: mainDevice.size,
                                         });
                                         totalUsed = mainDevice.filesystem.used;
                                       } else {
-                                        const partitions = devices.filter(dev =>
-                                          dev.type === 'part' &&
-                                          dev.filesystem?.used !== undefined &&
-                                          !dev.mount?.includes('boot') &&
-                                          !dev.mount?.includes('efi')
+                                        const partitions = devices.filter(
+                                          (dev) =>
+                                            dev.type === 'part' &&
+                                            dev.filesystem?.used !== undefined &&
+                                            !dev.mount?.includes('boot') &&
+                                            !dev.mount?.includes('efi')
                                         );
-                                        console.log('Using partitions:', partitions.map(p => ({
-                                          name: p.name,
-                                          mount: p.mount,
-                                          used: p.filesystem?.used,
-                                          size: p.size
-                                        })));
-                                        totalUsed = partitions.reduce((acc, dev) =>
-                                          acc + dev.filesystem!.used, 0
+                                        console.log(
+                                          'Using partitions:',
+                                          partitions.map((p) => ({
+                                            name: p.name,
+                                            mount: p.mount,
+                                            used: p.filesystem?.used,
+                                            size: p.size,
+                                          }))
+                                        );
+                                        totalUsed = partitions.reduce(
+                                          (acc, dev) => acc + dev.filesystem!.used,
+                                          0
                                         );
                                       }
-                                      return `${formatBytes(totalUsed)} / ${formatBytes(mainDevice.size)} • ${Math.round((totalUsed / mainDevice.size) * 100)}% used`;
-                                      return `${formatBytes(totalUsed)} / ${formatBytes(devices[0].size)} • ${Math.round((totalUsed / devices[0].size) * 100)}% used`;
+                                      return `${formatBytes(totalUsed)} / ${formatBytes(
+                                        mainDevice.size
+                                      )} • ${Math.round(
+                                        (totalUsed / mainDevice.size) * 100
+                                      )}% used`;
+                                      return `${formatBytes(totalUsed)} / ${formatBytes(
+                                        devices[0].size
+                                      )} • ${Math.round(
+                                        (totalUsed / devices[0].size) * 100
+                                      )}% used`;
                                     })()}
                                   </Typography>
                                 </Box>
@@ -559,7 +617,11 @@ export default function Dashboard() {
                           <Collapse in={expandedDevices.has(diskName)} sx={{ mt: 2 }}>
                             <Grid container spacing={2}>
                               {devices
-                                .filter(device => showSystemPartitions || (!device.name.includes('boot') && !device.name.includes('efi')))
+                                .filter(
+                                  (device) =>
+                                    showSystemPartitions ||
+                                    (!device.name.includes('boot') && !device.name.includes('efi'))
+                                )
                                 .map((device: StorageDevice) => (
                                   <Grid item xs={12} md={compactView ? 6 : 12} key={device.name}>
                                     <Paper variant="outlined" sx={{ p: 1.5 }}>
@@ -584,13 +646,23 @@ export default function Dashboard() {
                                             value={device.filesystem.use || 0}
                                             sx={{ height: 6, borderRadius: 3, mb: 0.5 }}
                                           />
-                                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                            {formatBytes(device.filesystem.used)} / {formatBytes(device.filesystem.size)}
-                                            {' • '}{Math.round(device.filesystem.use)}% used
+                                          <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                            sx={{ fontSize: '0.75rem' }}
+                                          >
+                                            {formatBytes(device.filesystem.used)} /{' '}
+                                            {formatBytes(device.filesystem.size)}
+                                            {' • '}
+                                            {Math.round(device.filesystem.use)}% used
                                           </Typography>
                                         </>
                                       ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{ fontSize: '0.75rem' }}
+                                        >
                                           {formatBytes(device.size)} Total
                                           {device.fsType && ` • ${device.fsType}`}
                                         </Typography>
@@ -605,20 +677,35 @@ export default function Dashboard() {
                   </Box>
                   <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
                     <IconButton
-                      onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                      onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
                       disabled={currentPage === 0}
                     >
                       <NavigateBeforeIcon />
                     </IconButton>
                     <Typography>
-                      Page {currentPage + 1} of {Math.ceil(Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage)}
+                      Page {currentPage + 1} of{' '}
+                      {Math.ceil(
+                        Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage
+                      )}
                     </Typography>
                     <IconButton
-                      onClick={() => setCurrentPage(prev => Math.min(
-                        Math.ceil(Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage) - 1,
-                        prev + 1
-                      ))}
-                      disabled={currentPage >= Math.ceil(Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage) - 1}
+                      onClick={() =>
+                        setCurrentPage((prev) =>
+                          Math.min(
+                            Math.ceil(
+                              Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage
+                            ) - 1,
+                            prev + 1
+                          )
+                        )
+                      }
+                      disabled={
+                        currentPage >=
+                        Math.ceil(
+                          Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage
+                        ) -
+                          1
+                      }
                     >
                       <NavigateNextIcon />
                     </IconButton>
@@ -628,39 +715,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </Grid>
-
-        {/* Network Status */}
-        {networkStats?.stats && networkStats.stats.length > 0 && (
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-                  <NetworkIcon color="primary" />
-                  <Typography variant="h6">Network</Typography>
-                </Stack>
-                {networkStats.stats.map((stat: NetworkStat) => (
-                  <Box key={stat.iface} sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2">{stat.iface}</Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">
-                          Download
-                        </Typography>
-                        <Typography variant="body1">{formatSpeed(stat.rx_sec)}</Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">
-                          Upload
-                        </Typography>
-                        <Typography variant="body1">{formatSpeed(stat.tx_sec)}</Typography>
-                      </Grid>
-                    </Grid>
-                  </Box>
-                ))}
-              </CardContent>
-            </Card>
-          </Grid>
-        )}
 
         {/* System Services */}
         {systemInfo.services && systemInfo.services.length > 0 && (

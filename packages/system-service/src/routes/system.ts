@@ -181,14 +181,74 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         })
       ]);
 
-      // Disk Performance Test
-      const diskTest = await Promise.all([
-        // Read speed
-        execAsync('dd if=/dev/zero of=/tmp/testfile bs=1M count=1000'),
-        execAsync('dd if=/tmp/testfile of=/dev/null bs=1M count=1000'),
-        // IOPS test using fio
-        execAsync('fio --name=randread --ioengine=libaio --direct=1 --bs=4k --iodepth=32 --size=1G --rw=randread --runtime=10 --filename=/tmp/testfile --output-format=json')
-      ]);
+      // Check OS type
+      const { stdout: osType } = await execAsync('uname');
+      const isLinux = osType.trim() === 'Linux';
+
+      let diskTest;
+      let diskResults;
+
+      // Check if fio is available
+      const hasFio = await execAsync('which fio').catch(() => ({ stdout: '' }));
+      
+      if (isLinux && hasFio.stdout.trim()) {
+        // Linux performance test with fio
+        try {
+          diskTest = await Promise.all([
+            execAsync('dd if=/dev/zero of=/tmp/testfile bs=1M count=1000 conv=fdatasync'),
+            execAsync('dd if=/tmp/testfile of=/dev/null bs=1M count=1000'),
+            execAsync('fio --name=randread --ioengine=libaio --direct=1 --bs=4k --iodepth=32 --size=1G --rw=randread --runtime=10 --filename=/tmp/testfile --output-format=json')
+          ]);
+
+          diskResults = {
+            readSpeed: parseFloat(diskTest[1].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
+            writeSpeed: parseFloat(diskTest[0].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
+            iops: JSON.parse(diskTest[2].stdout).jobs[0].read.iops
+          };
+        } catch (error) {
+          // Fallback to basic test if fio test fails
+          diskTest = await Promise.all([
+            execAsync('dd if=/dev/zero of=/tmp/testfile bs=1M count=1000 2>&1'),
+            execAsync('dd if=/tmp/testfile of=/dev/null bs=1M count=1000 2>&1')
+          ]);
+
+          diskResults = {
+            readSpeed: parseFloat(diskTest[1].stderr.match(/([0-9.]+) ([kMG])B\/s/)?.[1] || '0'),
+            writeSpeed: parseFloat(diskTest[0].stderr.match(/([0-9.]+) ([kMG])B\/s/)?.[1] || '0'),
+            iops: 0 // Cannot calculate IOPS without fio
+          };
+        }
+      } else {
+        // macOS or Linux without fio
+        diskTest = await Promise.all([
+          execAsync('dd if=/dev/zero of=/tmp/testfile bs=1m count=1000 2>&1'),
+          execAsync('dd if=/tmp/testfile of=/dev/null bs=1m count=1000 2>&1')
+        ]);
+
+        const parseSpeed = (output: string): number => {
+          const match = output.match(/([0-9.]+)\s*([kMG])?B\/s/);
+          if (!match) return 0;
+          const [, value, unit = 'M'] = match;
+          const val = parseFloat(value);
+          switch (unit) {
+            case 'G': return val * 1024;
+            case 'M': return val;
+            case 'k': return val / 1024;
+            default: return val;
+          }
+        };
+
+        // Calculate IOPS using small block size reads
+        const iopsTest = await execAsync('dd if=/tmp/testfile of=/dev/null bs=4k count=1000 2>&1');
+        const iopsSpeed = parseSpeed(iopsTest.stderr);
+        const iops = Math.round((iopsSpeed * 1024 * 1024) / 4096); // Convert MB/s to 4K IOPS
+
+        diskResults = {
+          readSpeed: parseSpeed(diskTest[1].stderr),
+          writeSpeed: parseSpeed(diskTest[0].stderr),
+          iops
+        };
+      }
 
       // Clean up test files
       await execAsync('rm -f /tmp/testfile /tmp/test');
@@ -205,11 +265,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
           writeSpeed: parseFloat(memTest[1].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
           latency: memTest[2]
         },
-        disk: {
-          readSpeed: parseFloat(diskTest[1].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
-          writeSpeed: parseFloat(diskTest[0].stdout.match(/([0-9.]+) GB\/s/)?.[1] || '0') * 1024,
-          iops: JSON.parse(diskTest[2].stdout).jobs[0].read.iops
-        }
+        disk: diskResults
       };
 
       return result;

@@ -56,42 +56,29 @@ const AnimatedButton = styled(Button)(({ theme }) => ({
   fontWeight: 500,
   letterSpacing: '0.5px',
   textShadow: '0 0 10px rgba(255, 255, 255, 0.3)',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: '-2px',
-    left: '-2px',
-    right: '-2px',
-    bottom: '-2px',
-    background: 'linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000)',
-    backgroundSize: '400%',
-    zIndex: -1,
-    animation: 'glowing 20s linear infinite',
-    borderRadius: '10px',
-    opacity: 0.5,
-    filter: 'blur(1px)',
-  },
+  border: '2px solid transparent',
+  backgroundImage: 'linear-gradient(#000, #000), linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000)',
+  backgroundOrigin: 'border-box',
+  backgroundClip: 'padding-box, border-box',
+  backgroundSize: '100% 100%, 400%',
+  animation: 'borderAnimation 20s linear infinite',
   '&:hover': {
     transform: 'scale(1.02)',
-    backgroundColor: '#000',
     boxShadow: '0 0 20px rgba(0, 0, 0, 0.3)',
-    '&::before': {
-      opacity: 0.8,
-      filter: 'blur(0.5px)',
-    },
+    backgroundSize: '100% 100%, 200%',
   },
   '& .MuiButton-startIcon': {
     color: 'rgba(255, 255, 255, 0.9)',
   },
-  '@keyframes glowing': {
+  '@keyframes borderAnimation': {
     '0%': {
-      backgroundPosition: '0 0',
+      backgroundPosition: '0% 0%, 0 0',
     },
     '50%': {
-      backgroundPosition: '400% 0',
+      backgroundPosition: '0% 0%, 400% 0',
     },
     '100%': {
-      backgroundPosition: '0 0',
+      backgroundPosition: '0% 0%, 0 0',
     },
   },
 }));

@@ -41,7 +41,17 @@ export const storageRoutes: FastifyPluginAsync = async (fastify) => {
       const enhancedDevices = await Promise.all(
         blockDevices.map(async (device) => {
           const layout = diskLayout.find(d => d.device === device.name);
-          const fs = fsSize.find(f => f.fs === device.mount);
+          // Match filesystem by device name or mount point
+          const fs = fsSize.find(f =>
+            f.fs === `/dev/${device.name}` ||
+            f.fs === device.name ||
+            f.fs === device.mount
+          );
+          console.log(`Device ${device.name}:`, {
+            mount: device.mount,
+            fsSize: fsSize.map(f => ({ fs: f.fs, size: f.size, used: f.used })),
+            matchedFs: fs
+          });
           
           // Get SMART data if available
           let smart = null;

@@ -173,7 +173,8 @@ export default function Dashboard() {
         throw new Error('Failed to fetch storage info');
       }
       const data = await response.json();
-      console.log('Storage Info:', data); // Debug log
+      console.log('Storage Info:', JSON.stringify(data, null, 2)); // More detailed debug log
+      console.log('First device:', JSON.stringify(data.devices[0], null, 2)); // Log first device details
       return data;
     },
     refetchInterval: 10000,
@@ -484,35 +485,56 @@ export default function Dashboard() {
                                   <LinearProgress
                                     variant="determinate"
                                     value={(() => {
-                                      const partitions = devices.filter(dev => dev.type === 'part');
-                                      const totalUsed = partitions.reduce((acc, dev) => {
-                                        if (dev.filesystem?.used) {
-                                          console.log(`Partition ${dev.name}: filesystem used=${dev.filesystem.used}`);
-                                          return acc + dev.filesystem.used;
-                                        }
-                                        if (dev.mount) {
-                                          console.log(`Partition ${dev.name}: mounted size=${dev.size}`);
-                                          return acc + dev.size;
-                                        }
-                                        return acc;
-                                      }, 0);
+                                      let totalUsed = 0;
+                                      // First check if the disk itself has filesystem info
+                                      const mainDevice = devices[0];
+                                      if (mainDevice.filesystem?.used !== undefined) {
+                                        console.log('Using main device filesystem:', {
+                                          name: mainDevice.name,
+                                          used: mainDevice.filesystem.used,
+                                          size: mainDevice.size
+                                        });
+                                        totalUsed = mainDevice.filesystem.used;
+                                      } else {
+                                        // If not, sum up non-system partitions
+                                        const partitions = devices.filter(dev =>
+                                          dev.type === 'part' &&
+                                          dev.filesystem?.used !== undefined &&
+                                          !dev.mount?.includes('boot') &&
+                                          !dev.mount?.includes('efi')
+                                        );
+                                        console.log('Using partitions:', partitions.map(p => ({
+                                          name: p.name,
+                                          mount: p.mount,
+                                          used: p.filesystem?.used,
+                                          size: p.size
+                                        })));
+                                        totalUsed = partitions.reduce((acc, dev) =>
+                                          acc + dev.filesystem!.used, 0
+                                        );
+                                      }
+                                      return totalUsed;
                                       return Math.round((totalUsed / devices[0].size) * 100);
                                     })()}
                                     sx={{ height: 6, borderRadius: 3, mt: 1 }}
                                   />
                                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.75rem' }}>
                                     {(() => {
-                                      const partitions = devices.filter(dev => dev.type === 'part');
+                                      const partitions = devices.filter(dev =>
+                                        dev.type === 'part' &&
+                                        (dev.filesystem?.used !== undefined || dev.size) &&
+                                        !dev.mount?.includes('boot') &&
+                                        !dev.mount?.includes('efi')
+                                      );
+                                      console.log('Filtered partitions:', partitions.map(p => ({
+                                        name: p.name,
+                                        mount: p.mount,
+                                        used: p.filesystem?.used || p.size,
+                                        size: p.size
+                                      })));
                                       const totalUsed = partitions.reduce((acc, dev) => {
-                                        if (dev.filesystem?.used) {
-                                          console.log(`Partition ${dev.name}: filesystem used=${dev.filesystem.used}`);
-                                          return acc + dev.filesystem.used;
-                                        }
-                                        if (dev.mount) {
-                                          console.log(`Partition ${dev.name}: mounted size=${dev.size}`);
-                                          return acc + dev.size;
-                                        }
-                                        return acc;
+                                        // Use filesystem.used if available, otherwise use partition size
+                                        return acc + (dev.filesystem?.used || dev.size || 0);
                                       }, 0);
                                       return `${formatBytes(totalUsed)} / ${formatBytes(devices[0].size)} • ${Math.round((totalUsed / devices[0].size) * 100)}% used`;
                                     })()}

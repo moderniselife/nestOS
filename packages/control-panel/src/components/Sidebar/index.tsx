@@ -16,8 +16,7 @@ import {
   Cloud as DockerIcon,
   NetworkCheck as NetworkIcon,
   Settings as SettingsIcon,
-  Dashboard as DashboardIcon,
-  Home as NestIcon
+  Dashboard as DashboardIcon
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -56,8 +55,25 @@ export default function Sidebar() {
           backgroundColor: 'background.paper'
         }}
       >
-        <Stack direction="row" spacing={1} alignItems="center">
-          <NestIcon sx={{ color: 'primary.main', fontSize: 32 }} />
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Box
+            component="img"
+            src="/logo.svg"
+            alt="NestOS Logo"
+            sx={{
+              width: 40,
+              height: 40,
+              animation: 'spin 20s linear infinite',
+              '@keyframes spin': {
+                '0%': {
+                  transform: 'rotate(0deg)'
+                },
+                '100%': {
+                  transform: 'rotate(360deg)'
+                }
+              }
+            }}
+          />
           <Box>
             <Typography variant="h6" noWrap component="div" sx={{ color: 'primary.main' }}>
               NestOS

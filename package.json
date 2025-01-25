@@ -27,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/nestos.git"
+    "url": "https://github.com/moderniselife/nestos.git"
   },
   "keywords": [
     "nas",
@@ -37,6 +37,6 @@
     "react",
     "debian"
   ],
-  "author": "Your Name",
+  "author": "Joseph Shenton",
   "license": "MIT"
 }

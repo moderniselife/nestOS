@@ -2,9 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#FF7043" />
     <meta name="description" content="NestOS - A modern, user-friendly home server operating system" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="NestOS" />
     <title>NestOS</title>
     <style>
       body {
@@ -30,59 +35,78 @@
         align-items: center;
         min-height: 100vh;
         background-color: #121212;
-        gap: 24px;
+        gap: 32px;
       }
 
       .loader-logo {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        background-color: #1E1E1E;
-        border: 3px solid #FF7043;
-        position: relative;
-        animation: pulse 2s infinite;
+        width: 120px;
+        height: 120px;
+        opacity: 0;
+        animation: fadeInScale 0.5s ease-out forwards;
       }
 
-      .loader-logo::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background-color: #FF7043;
+      .loader-logo img {
+        width: 100%;
+        height: 100%;
+        filter: drop-shadow(0 0 10px rgba(255, 112, 67, 0.3));
       }
 
       .loader-text {
-        font-size: 24px;
+        font-size: 28px;
         font-weight: 600;
         color: #FF7043;
-        animation: fade 2s infinite;
+        opacity: 0;
+        animation: fadeIn 0.5s ease-out forwards 0.5s;
       }
 
-      @keyframes pulse {
-        0% {
-          transform: scale(1);
-          opacity: 1;
+      @keyframes fadeInScale {
+        from {
+          opacity: 0;
+          transform: scale(0.9);
         }
-        50% {
-          transform: scale(1.1);
-          opacity: 0.8;
-        }
-        100% {
-          transform: scale(1);
+        to {
           opacity: 1;
+          transform: scale(1);
         }
       }
 
-      @keyframes fade {
-        0%, 100% {
-          opacity: 1;
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
         }
-        50% {
-          opacity: 0.6;
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Dark mode media query */
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #121212;
+          color: #ffffff;
+        }
+      }
+
+      /* Light mode media query */
+      @media (prefers-color-scheme: light) {
+        body {
+          background-color: #ffffff;
+          color: #121212;
+        }
+        .initial-loader {
+          background-color: #ffffff;
+        }
+      }
+
+      /* High contrast mode */
+      @media (forced-colors: active) {
+        .loader-text {
+          color: CanvasText;
+        }
+        .loader-logo img {
+          forced-color-adjust: none;
         }
       }
     </style>
@@ -90,7 +114,9 @@
   <body>
     <div id="root">
       <div class="initial-loader">
-        <div class="loader-logo"></div>
+        <div class="loader-logo">
+          <img src="/logo.svg" alt="NestOS Logo" />
+        </div>
         <div class="loader-text">NestOS</div>
       </div>
     </div>

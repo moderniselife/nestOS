@@ -20,6 +20,7 @@ NestOS is designed to make home server management simple and beautiful. It provi
 > ⚠️ **Active Development**: NestOS is currently under heavy development and is not ready for production use. Features and APIs may change significantly.
 
 Current focus areas:
+
 - Core system architecture
 - Storage management
 - Docker integration
@@ -29,13 +30,14 @@ Current focus areas:
 ## 🚀 Quick Start
 
 Prerequisites:
+
 - Node.js 20+
 - Docker & Docker Compose
 - Git
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/nestos.git
+git clone https://github.com/moderniselife/nestos.git
 cd nestos
 
 # Setup development environment
@@ -49,6 +51,7 @@ npm run docker:dev
 ```
 
 Access:
+
 - Web UI: https://localhost:8443
 - API: http://localhost:3000
 
@@ -65,22 +68,25 @@ nestos/
 ## 🛠️ Technology Stack
 
 - Frontend:
-  * React with TypeScript
-  * Material-UI
-  * Real-time updates
-  * Responsive design
+
+  - React with TypeScript
+  - Material-UI
+  - Real-time updates
+  - Responsive design
 
 - Backend:
-  * Node.js with TypeScript
-  * Fastify
-  * System integration
-  * WebSocket support
+
+  - Node.js with TypeScript
+  - Fastify
+  - System integration
+  - WebSocket support
 
 - Base System:
-  * Debian-based
-  * Docker support
-  * Hardware monitoring
-  * Network management
+
+  - Debian-based
+  - Docker support
+  - Hardware monitoring
+  - Network management
 
 ## 🤝 Contributing
 

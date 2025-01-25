@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with gradient -->
+  <defs>
+    <linearGradient id="nestGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF7043;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF5722;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Main circular frame -->
+  <circle cx="256" cy="256" r="240" fill="#1E1E1E" stroke="url(#nestGradient)" stroke-width="16"/>
+  
+  <!-- Outer nest ring -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#FF7043" stroke-width="12" opacity="0.8">
+    <animate attributeName="stroke-dasharray" from="0,1130" to="1130,0" dur="2s" fill="freeze" />
+  </circle>
+  
+  <!-- Middle nest ring -->
+  <circle cx="256" cy="256" r="140" fill="none" stroke="#FF7043" stroke-width="10" opacity="0.6">
+    <animate attributeName="stroke-dasharray" from="0,880" to="880,0" dur="1.75s" fill="freeze" />
+  </circle>
+  
+  <!-- Inner nest ring -->
+  <circle cx="256" cy="256" r="100" fill="none" stroke="#FF7043" stroke-width="8" opacity="0.4">
+    <animate attributeName="stroke-dasharray" from="0,628" to="628,0" dur="1.5s" fill="freeze" />
+  </circle>
+  
+  <!-- Center dot -->
+  <circle cx="256" cy="256" r="40" fill="url(#nestGradient)">
+    <animate attributeName="r" from="0" to="40" dur="0.5s" fill="freeze" />
+  </circle>
+  
+  <!-- Decorative lines -->
+  <g stroke="#FF7043" stroke-width="8" stroke-linecap="round">
+    <!-- Top -->
+    <line x1="256" y1="16" x2="256" y2="76">
+      <animate attributeName="y2" from="16" to="76" dur="0.5s" fill="freeze" />
+    </line>
+    <!-- Bottom -->
+    <line x1="256" y1="496" x2="256" y2="436">
+      <animate attributeName="y1" from="436" to="496" dur="0.5s" fill="freeze" />
+    </line>
+    <!-- Left -->
+    <line x1="16" y1="256" x2="76" y2="256">
+      <animate attributeName="x2" from="16" to="76" dur="0.5s" fill="freeze" />
+    </line>
+    <!-- Right -->
+    <line x1="496" y1="256" x2="436" y2="256">
+      <animate attributeName="x1" from="436" to="496" dur="0.5s" fill="freeze" />
+    </line>
+  </g>
+  
+  <!-- Subtle glow effect -->
+  <circle cx="256" cy="256" r="240" fill="none" stroke="url(#nestGradient)" stroke-width="2" opacity="0.3">
+    <animate attributeName="r" values="240;245;240" dur="2s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.3;0.1;0.3" dur="2s" repeatCount="indefinite" />
+  </circle>
+</svg>

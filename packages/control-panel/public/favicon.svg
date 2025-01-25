@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <defs>
+    <linearGradient id="nestGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF7043;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF5722;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Main circle -->
+  <circle cx="16" cy="16" r="15" fill="#1E1E1E" stroke="url(#nestGradient)" stroke-width="2"/>
+  
+  <!-- Outer ring -->
+  <circle cx="16" cy="16" r="11" fill="none" stroke="#FF7043" stroke-width="1.5" opacity="0.8"/>
+  
+  <!-- Middle ring -->
+  <circle cx="16" cy="16" r="8" fill="none" stroke="#FF7043" stroke-width="1.2" opacity="0.6"/>
+  
+  <!-- Inner ring -->
+  <circle cx="16" cy="16" r="5" fill="none" stroke="#FF7043" stroke-width="1" opacity="0.4"/>
+  
+  <!-- Center dot -->
+  <circle cx="16" cy="16" r="2.5" fill="url(#nestGradient)"/>
+</svg>

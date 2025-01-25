@@ -168,8 +168,8 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       const memTest = await Promise.all([
         // Read speed
         execAsync('dd if=/dev/zero of=/dev/null bs=1M count=1000'),
-        // Write speed
-        execAsync('dd if=/dev/zero of=/tmp/test bs=1M count=1000 conv=fdatasync'),
+        // Write speed (removed fdatasync for macOS compatibility)
+        execAsync('dd if=/dev/zero of=/tmp/test bs=1M count=1000'),
         // Latency (using simple allocation/deallocation)
         new Promise<number>(async (resolve) => {
           const startTime = process.hrtime.bigint();
@@ -235,6 +235,30 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       return { status: 'shutting_down' };
     } catch (error) {
       throw new Error(`Failed to initiate shutdown: ${error}`);
+    }
+  });
+
+  // Get system logs
+  fastify.get('/logs', {
+    schema: logsSchema
+  }, async () => {
+    try {
+      // Try journalctl first (Linux)
+      try {
+        const { stdout } = await execAsync('journalctl -n 1000 --no-pager');
+        return { logs: stdout };
+      } catch {
+        // Fall back to system.log (macOS)
+        try {
+          const { stdout } = await execAsync('tail -n 1000 /var/log/system.log');
+          return { logs: stdout };
+        } catch {
+          // If both fail, return empty logs
+          return { logs: 'No system logs available' };
+        }
+      }
+    } catch (error) {
+      throw new Error(`Failed to get system logs: ${error}`);
     }
   });
 

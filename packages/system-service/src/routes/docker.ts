@@ -36,7 +36,26 @@ const plugin: FastifyPluginAsync = async (fastify) => {
   fastify.get('/stats', {
     schema: {
       response: {
-        200: statsResponseSchema
+        200: {
+          type: 'object',
+          properties: {
+            stats: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  cpu: { type: 'string' },
+                  memory: { type: 'string' },
+                  network: { type: 'string' },
+                  disk: { type: 'string' }
+                },
+                required: ['name', 'cpu', 'memory', 'network', 'disk']
+              }
+            }
+          },
+          required: ['stats']
+        }
       }
     }
   }, async (request, reply) => {
@@ -116,6 +135,9 @@ const containerQuerySchema = z.object({
 });
 
 export const dockerRoutes: FastifyPluginAsync = async (fastify) => {
+  // Register the stats plugin
+  await fastify.register(plugin);
+
   // List containers
   fastify.get('/containers', async (request) => {
     const { all } = containerQuerySchema.parse(request.query);

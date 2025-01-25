@@ -94,6 +94,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set lowercase repository name
+        run: |
+          echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
       - name: Build and push Control Panel
         uses: docker/build-push-action@v5
         with:
@@ -101,8 +105,8 @@ jobs:
           file: ./packages/control-panel/Dockerfile.dev
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/control-panel:latest
-            ghcr.io/${{ github.repository }}/control-panel:${{ github.sha }}
+            ghcr.io/${{ env.REPO_LOWER }}/control-panel:latest
+            ghcr.io/${{ env.REPO_LOWER }}/control-panel:${{ github.sha }}
 
       - name: Build and push System Service
         uses: docker/build-push-action@v5
@@ -111,5 +115,5 @@ jobs:
           file: ./packages/system-service/Dockerfile.dev
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/system-service:latest
-            ghcr.io/${{ github.repository }}/system-service:${{ github.sha }}
+            ghcr.io/${{ env.REPO_LOWER }}/system-service:latest
+            ghcr.io/${{ env.REPO_LOWER }}/system-service:${{ github.sha }}

@@ -11,7 +11,8 @@
     "build:iso": "tsx src/build-iso.ts",
     "build:usb": "tsx src/build-usb.ts",
     "clean": "tsx src/clean.ts",
-    "cli": "tsx src/index.ts"
+    "cli": "tsx src/index.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "archiver": "^6.0.1",

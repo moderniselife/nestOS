@@ -14,6 +14,7 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "clean": "turbo run clean",
+    "type-check": "turbo run type-check",
     "docker:dev": "docker-compose up",
     "docker:build": "docker-compose build"
   },

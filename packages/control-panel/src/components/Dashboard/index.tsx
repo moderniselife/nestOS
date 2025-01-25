@@ -43,6 +43,25 @@ import {
   ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
 
+function calculateDeviceUsage(devices: StorageDevice[]) {
+  const partitions = devices.filter(dev => dev.type === 'part');
+  const totalUsed = partitions.reduce((acc, dev) => {
+    if (dev.filesystem?.used) {
+      console.log(`Partition ${dev.name}: filesystem used=${dev.filesystem.used}`);
+      return acc + dev.filesystem.used;
+    }
+    if (dev.mount) {
+      console.log(`Partition ${dev.name}: mounted size=${dev.size}`);
+      return acc + dev.size;
+    }
+    return acc;
+  }, 0);
+  const totalSize = devices[0].size;
+  const usagePercent = Math.round((totalUsed / totalSize) * 100);
+  
+  return { totalUsed, totalSize, usagePercent };
+}
+
 function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]> {
   const groups: Record<string, StorageDevice[]> = {};
   
@@ -465,16 +484,36 @@ export default function Dashboard() {
                                   <LinearProgress
                                     variant="determinate"
                                     value={(() => {
-                                      const mountedPartitions = devices.filter(dev => dev.type === 'part' && dev.mount && dev.filesystem);
-                                      const totalUsed = mountedPartitions.reduce((acc, dev) => acc + dev.filesystem!.used, 0);
+                                      const partitions = devices.filter(dev => dev.type === 'part');
+                                      const totalUsed = partitions.reduce((acc, dev) => {
+                                        if (dev.filesystem?.used) {
+                                          console.log(`Partition ${dev.name}: filesystem used=${dev.filesystem.used}`);
+                                          return acc + dev.filesystem.used;
+                                        }
+                                        if (dev.mount) {
+                                          console.log(`Partition ${dev.name}: mounted size=${dev.size}`);
+                                          return acc + dev.size;
+                                        }
+                                        return acc;
+                                      }, 0);
                                       return Math.round((totalUsed / devices[0].size) * 100);
                                     })()}
                                     sx={{ height: 6, borderRadius: 3, mt: 1 }}
                                   />
                                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.75rem' }}>
                                     {(() => {
-                                      const mountedPartitions = devices.filter(dev => dev.type === 'part' && dev.mount && dev.filesystem);
-                                      const totalUsed = mountedPartitions.reduce((acc, dev) => acc + dev.filesystem!.used, 0);
+                                      const partitions = devices.filter(dev => dev.type === 'part');
+                                      const totalUsed = partitions.reduce((acc, dev) => {
+                                        if (dev.filesystem?.used) {
+                                          console.log(`Partition ${dev.name}: filesystem used=${dev.filesystem.used}`);
+                                          return acc + dev.filesystem.used;
+                                        }
+                                        if (dev.mount) {
+                                          console.log(`Partition ${dev.name}: mounted size=${dev.size}`);
+                                          return acc + dev.size;
+                                        }
+                                        return acc;
+                                      }, 0);
                                       return `${formatBytes(totalUsed)} / ${formatBytes(devices[0].size)} • ${Math.round((totalUsed / devices[0].size) * 100)}% used`;
                                     })()}
                                   </Typography>

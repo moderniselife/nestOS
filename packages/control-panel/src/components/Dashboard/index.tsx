@@ -432,8 +432,8 @@ export default function Dashboard() {
             </Box>
             <Box>
               <Typography variant="subtitle2" color="text.secondary">Disk Performance</Typography>
-              <Typography>Read Speed: {(data.disk.readSpeed / 1024).toFixed(2)} GB/s</Typography>
-              <Typography>Write Speed: {(data.disk.writeSpeed / 1024).toFixed(2)} GB/s</Typography>
+              <Typography>Read Speed: {data.disk.readSpeed.toFixed(2)} GB/s</Typography>
+              <Typography>Write Speed: {data.disk.writeSpeed.toFixed(2)} GB/s</Typography>
               <Typography>IOPS: {data.disk.iops.toFixed(0)}</Typography>
             </Box>
           </Stack>

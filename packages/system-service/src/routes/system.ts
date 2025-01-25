@@ -255,61 +255,107 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         };
       } else {
         // macOS or Linux without fio
-        // Create a large test file first
-        await execAsync('dd if=/dev/zero of=/tmp/testfile bs=128m count=8 2>&1');
+        console.log('Running macOS disk tests...');
 
-        // Run multiple tests to get more accurate results
-        const runTest = async (cmd: string) => {
-          const { stderr } = await execAsync(cmd);
-          // Try macOS format first
-          const bytesPerSecMatch = stderr.match(/\((\d+)\s+bytes\/sec\)/);
+        // Helper function to parse dd output
+        const parseSpeed = (output: string): number => {
+          console.log('Parsing output:', output);
+
+          // Match the exact macOS dd format: (XXXXXX bytes/sec)
+          const bytesPerSecMatch = output.match(/\((\d+)\s+bytes\/sec\)/);
           if (bytesPerSecMatch) {
             const bytesPerSec = parseInt(bytesPerSecMatch[1], 10);
-            return bytesPerSec / (1024 * 1024); // Convert bytes/sec to MB/s
+            const gbPerSec = bytesPerSec / (1024 * 1024 * 1024);
+            console.log('Parsed speed:', {
+              bytesPerSec,
+              gbPerSec
+            });
+            return gbPerSec;
           }
 
-          // Try Linux format
-          const linuxMatch = stderr.match(/([0-9.]+)\s*([kMG])?B\/s/);
-          if (linuxMatch) {
-            const [, value, unit = 'M'] = linuxMatch;
-            const val = parseFloat(value);
-            switch (unit) {
-              case 'G': return val * 1024;
-              case 'M': return val;
-              case 'k': return val / 1024;
-              default: return val;
-            }
+          // Try alternate format with bytes transferred and time
+          const bytesMatch = output.match(/(\d+)\s+bytes\s+transferred\s+in\s+([\d.]+)\s+secs/);
+          if (bytesMatch) {
+            const bytes = parseInt(bytesMatch[1], 10);
+            const seconds = parseFloat(bytesMatch[2]);
+            const gbPerSec = (bytes / (1024 * 1024 * 1024)) / seconds;
+            console.log('Parsed speed (alternate):', {
+              bytes,
+              seconds,
+              gbPerSec
+            });
+            return gbPerSec;
           }
 
+          // Log the output if no match found
+          console.log('Could not parse speed from output:', output);
           return 0;
         };
 
-        // Run multiple iterations and take the average
-        const iterations = 3;
-        let writeSpeed = 0;
-        let readSpeed = 0;
+        // Create test file
+        await execAsync('dd if=/dev/zero of=/tmp/testfile bs=128m count=8');
 
-        for (let i = 0; i < iterations; i++) {
-          writeSpeed += await runTest('dd if=/dev/zero of=/tmp/testfile bs=128m count=8 2>&1');
-          readSpeed += await runTest('dd if=/tmp/testfile of=/dev/null bs=128m count=8 2>&1');
+        // Helper function to run dd command and get output
+        const runDdTest = async (command: string): Promise<string> => {
+          try {
+            const { stdout, stderr } = await execAsync(`/bin/dd ${command}`);
+            const output = stderr || stdout;
+            console.log('DD command output:', output);
+            return output;
+          } catch (error: any) {
+            // On macOS, dd might exit with status 1 but still work
+            if (error.stderr) {
+              console.log('DD command error output:', error.stderr);
+              return error.stderr;
+            }
+            throw error;
+          }
+        };
+
+        // Create test file
+        console.log('Creating test file...');
+        await runDdTest('if=/dev/zero of=/tmp/testfile bs=1m count=1024');
+
+        // Run write tests
+        const writeResults = [];
+        for (let i = 0; i < 3; i++) {
+          console.log(`Running write test ${i + 1}...`);
+          const output = await runDdTest('if=/dev/zero of=/tmp/testfile bs=1m count=1024');
+          const speed = parseSpeed(output);
+          console.log(`Write test ${i + 1} speed:`, speed);
+          writeResults.push(speed);
         }
 
-        writeSpeed = writeSpeed / iterations;
-        readSpeed = readSpeed / iterations;
+        // Run read tests
+        const readResults = [];
+        for (let i = 0; i < 3; i++) {
+          console.log(`Running read test ${i + 1}...`);
+          const output = await runDdTest('if=/tmp/testfile of=/dev/null bs=1m count=1024');
+          const speed = parseSpeed(output);
+          console.log(`Read test ${i + 1} speed:`, speed);
+          readResults.push(speed);
+        }
 
-        // Calculate IOPS using small block size reads
-        const iopsTests = await Promise.all(Array.from({ length: 5 }).map(() => 
-          runTest('dd if=/tmp/testfile of=/dev/null bs=4k count=1000 2>&1')
-        ));
+        // Run IOPS tests
+        const iopsResults = [];
+        for (let i = 0; i < 5; i++) {
+          console.log(`Running IOPS test ${i + 1}...`);
+          const output = await runDdTest('if=/tmp/testfile of=/dev/null bs=4k count=1000');
+          const speed = parseSpeed(output);
+          console.log(`IOPS test ${i + 1} speed:`, speed);
+          const iops = Math.round((speed * 1024 * 1024) / 4); // Convert GB/s to 4K IOPS
+          console.log(`IOPS test ${i + 1} IOPS:`, iops);
+          iopsResults.push(iops);
+        }
 
-        const avgIopsSpeed = iopsTests.reduce((a, b) => a + b, 0) / iopsTests.length;
-        const iops = Math.round((avgIopsSpeed * 1024 * 1024) / 4096); // Convert MB/s to 4K IOPS
+        // Calculate averages
+        const writeSpeed = writeResults.reduce((a, b) => a + b, 0) / writeResults.length;
+        const readSpeed = readResults.reduce((a, b) => a + b, 0) / readResults.length;
+        const iops = Math.round(iopsResults.reduce((a, b) => a + b, 0) / iopsResults.length);
 
-        diskResults = {
-          writeSpeed,
-          readSpeed,
-          iops
-        };
+        console.log('Final results:', { writeSpeed, readSpeed, iops });
+
+        diskResults = { writeSpeed, readSpeed, iops };
       }
 
       // Clean up test files

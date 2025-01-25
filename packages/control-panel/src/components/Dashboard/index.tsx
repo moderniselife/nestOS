@@ -518,7 +518,6 @@ export default function Dashboard() {
                                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.75rem' }}>
                                     {(() => {
                                       let totalUsed = 0;
-                                      // First check if the disk itself has filesystem info
                                       const mainDevice = devices[0];
                                       if (mainDevice.filesystem?.used !== undefined) {
                                         console.log('Using main device filesystem:', {
@@ -528,7 +527,6 @@ export default function Dashboard() {
                                         });
                                         totalUsed = mainDevice.filesystem.used;
                                       } else {
-                                        // If not, sum up non-system partitions
                                         const partitions = devices.filter(dev =>
                                           dev.type === 'part' &&
                                           dev.filesystem?.used !== undefined &&
@@ -545,6 +543,7 @@ export default function Dashboard() {
                                           acc + dev.filesystem!.used, 0
                                         );
                                       }
+                                      return `${formatBytes(totalUsed)} / ${formatBytes(mainDevice.size)} • ${Math.round((totalUsed / mainDevice.size) * 100)}% used`;
                                       return `${formatBytes(totalUsed)} / ${formatBytes(devices[0].size)} • ${Math.round((totalUsed / devices[0].size) * 100)}% used`;
                                     })()}
                                   </Typography>

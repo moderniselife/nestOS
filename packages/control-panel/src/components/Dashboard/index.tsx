@@ -430,17 +430,36 @@ export default function Dashboard() {
                             }}
                             onClick={() => toggleDevice(diskName)}
                           >
-                            <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                                {devices[0].model || diskName}
-                              </Typography>
-                              {devices[0].smart && (
-                                <Chip
-                                  size="small"
-                                  sx={{ ml: 1 }}
-                                  label={devices[0].smart.health}
-                                  color={devices[0].smart.health === 'PASSED' ? 'success' : 'error'}
-                                />
+                            <Box sx={{ flexGrow: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                                  {devices[0].model || diskName}
+                                </Typography>
+                                {devices[0].smart && (
+                                  <Chip
+                                    size="small"
+                                    sx={{ ml: 1 }}
+                                    label={devices[0].smart.health}
+                                    color={devices[0].smart.health === 'PASSED' ? 'success' : 'error'}
+                                  />
+                                )}
+                              </Box>
+                              {!expandedDevices.has(diskName) && (
+                                <>
+                                  <LinearProgress
+                                    variant="determinate"
+                                    value={Math.round(
+                                      (devices.reduce((acc, dev) => acc + (dev.filesystem?.used || 0), 0) /
+                                        devices[0].size) *
+                                        100
+                                    )}
+                                    sx={{ height: 6, borderRadius: 3, mt: 1 }}
+                                  />
+                                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.75rem' }}>
+                                    {formatBytes(devices.reduce((acc, dev) => acc + (dev.filesystem?.used || 0), 0))} /{' '}
+                                    {formatBytes(devices[0].size)}
+                                  </Typography>
+                                </>
                               )}
                             </Box>
                             {expandedDevices.has(diskName) ? (

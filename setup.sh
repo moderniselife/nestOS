@@ -21,6 +21,20 @@ fi
 echo -e "\n${BLUE}Installing dependencies...${NC}"
 npm install
 
+# Set up git hooks
+echo -e "\n${BLUE}Setting up git hooks...${NC}"
+if [ -d .git ]; then
+    # Create hooks directory if it doesn't exist
+    mkdir -p .git/hooks
+    
+    # Pre-commit hook for linting
+    cat > .git/hooks/pre-commit << 'EOF'
+#!/bin/bash
+npm run lint
+EOF
+    chmod +x .git/hooks/pre-commit
+fi
+
 # Create necessary directories
 echo -e "\n${BLUE}Creating build directories...${NC}"
 mkdir -p packages/iso-builder/build
@@ -40,17 +54,6 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 # Copy SSL certificates to packages
 cp .dev-certs/private.key packages/control-panel/ssl/
 cp .dev-certs/certificate.crt packages/control-panel/ssl/
-
-# Set up git hooks
-echo -e "\n${BLUE}Setting up git hooks...${NC}"
-if [ -d .git ]; then
-    # Pre-commit hook for linting
-    cat > .git/hooks/pre-commit << 'EOF'
-#!/bin/bash
-npm run lint
-EOF
-    chmod +x .git/hooks/pre-commit
-fi
 
 # Check if Docker is available
 if command -v docker &> /dev/null && command -v docker-compose &> /dev/null; then

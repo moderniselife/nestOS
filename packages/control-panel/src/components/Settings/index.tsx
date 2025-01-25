@@ -10,17 +10,25 @@ import {
   FormControlLabel,
   TextField,
   Alert,
-  Divider
+  Divider,
+  MenuItem
 } from '@mui/material';
 import {
   Save as SaveIcon,
   Refresh as UpdateIcon,
   PowerSettingsNew as PowerIcon
 } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiUrl } from '../../App';
 
-export default function Settings() {
+interface UpdateSettings {
+  autoUpdate: boolean;
+  schedule: 'hourly' | 'daily' | null;
+}
+
+export default function Settings(): JSX.Element {
+  const queryClient = useQueryClient();
+  
   const { data: systemInfo } = useQuery({
     queryKey: ['system-info'],
     queryFn: async () => {
@@ -31,6 +39,31 @@ export default function Settings() {
       return response.json();
     }
   });
+
+  const { data: updateSettings } = useQuery<UpdateSettings>({
+    queryKey: ['update-settings'],
+    queryFn: async () => {
+      const response = await fetch(`${apiUrl}/api/system/updates/settings`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch update settings');
+      }
+      return response.json();
+    }
+  });
+
+  const handleUpdateSettings = async (settings: Partial<UpdateSettings>) => {
+    try {
+      await fetch(`${apiUrl}/api/system/updates/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+      await queryClient.invalidateQueries({ queryKey: ['update-settings'] });
+    } catch (error) {
+      console.error('Failed to update settings:', error);
+      alert('Failed to update settings');
+    }
+  };
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -92,16 +125,63 @@ export default function Settings() {
               <Typography variant="body2" color="text.secondary" paragraph>
                 Current Version: {systemInfo?.release}
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<UpdateIcon />}
-                onClick={() => {
-                  // TODO: Implement system update
-                  console.log('Update system');
-                }}
-              >
-                Check for Updates
-              </Button>
+              <Stack spacing={2}>
+                <Button
+                  variant="contained"
+                  startIcon={<UpdateIcon />}
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(`${apiUrl}/api/system/updates/check`);
+                      if (!response.ok) throw new Error('Failed to check for updates');
+                      const data = await response.json();
+                      
+                      if (data.updateAvailable) {
+                        if (window.confirm(`Update available! Changes:\n${data.updateDetails.map((d: any) => `${d.hash}: ${d.message}`).join('\n')}\n\nWould you like to update now?`)) {
+                          await fetch(`${apiUrl}/api/system/updates/apply`, { method: 'POST' });
+                          window.location.reload();
+                        }
+                      } else {
+                        alert('Your system is up to date!');
+                      }
+                    } catch (error) {
+                      console.error('Update check failed:', error);
+                      alert('Failed to check for updates');
+                    }
+                  }}
+                >
+                  Check for Updates
+                </Button>
+                
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={Boolean(updateSettings?.autoUpdate)}
+                      onChange={(e) => handleUpdateSettings({
+                        autoUpdate: e.target.checked,
+                        schedule: e.target.checked ? updateSettings?.schedule || 'daily' : null
+                      })}
+                    />
+                  }
+                  label="Enable Auto Updates"
+                />
+                
+                {updateSettings?.autoUpdate && (
+                  <TextField
+                    select
+                    fullWidth
+                    size="small"
+                    label="Update Schedule"
+                    value={updateSettings.schedule || 'daily'}
+                    onChange={(e) => handleUpdateSettings({
+                      autoUpdate: true,
+                      schedule: e.target.value as 'hourly' | 'daily'
+                    })}
+                  >
+                    <MenuItem value="hourly">Every Hour</MenuItem>
+                    <MenuItem value="daily">Once Daily</MenuItem>
+                  </TextField>
+                )}
+              </Stack>
             </CardContent>
           </Card>
         </Grid>

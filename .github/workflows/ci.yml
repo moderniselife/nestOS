@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -80,6 +80,17 @@ jobs:
           name: nestos-iso
           path: packages/iso-builder/build/nestos.iso
           retention-days: 7
+
+      - name: Create Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          name: NestOS ${{ github.sha }}
+          tag_name: v${{ github.run_number }}
+          files: packages/iso-builder/build/nestos.iso
+          draft: false
+          prerelease: false
+          generate_release_notes: true
 
   docker:
     runs-on: ubuntu-latest

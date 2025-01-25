@@ -45,14 +45,30 @@ import {
 
 function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]> {
   const groups: Record<string, StorageDevice[]> = {};
+  
+  // First, find all physical disk devices
   devices.forEach(device => {
-    // Extract the base device name (e.g., '/dev/disk0' from '/dev/disk0s1')
-    const baseName = device.name.replace(/[sp][0-9]+$/, '');
-    if (!groups[baseName]) {
-      groups[baseName] = [];
+    if (device.type === 'disk' && device.physical === 'SSD') {
+      groups[device.name] = [device];
     }
-    groups[baseName].push(device);
   });
+
+  // Then, add direct partitions to their parent disks
+  devices.forEach(device => {
+    if (device.type === 'part' && device.device && groups[device.device]) {
+      groups[device.device].push(device);
+    }
+  });
+
+  // Filter out empty groups and sort partitions by name
+  Object.keys(groups).forEach(key => {
+    if (groups[key].length === 0) {
+      delete groups[key];
+    } else {
+      groups[key].sort((a, b) => a.name.localeCompare(b.name));
+    }
+  });
+
   return groups;
 }
 
@@ -445,21 +461,24 @@ export default function Dashboard() {
                                 )}
                               </Box>
                               {!expandedDevices.has(diskName) && (
-                                <>
+                                <Box>
                                   <LinearProgress
                                     variant="determinate"
-                                    value={Math.round(
-                                      (devices.reduce((acc, dev) => acc + (dev.filesystem?.used || 0), 0) /
-                                        devices[0].size) *
-                                        100
-                                    )}
+                                    value={(() => {
+                                      const mountedPartitions = devices.filter(dev => dev.type === 'part' && dev.mount && dev.filesystem);
+                                      const totalUsed = mountedPartitions.reduce((acc, dev) => acc + dev.filesystem!.used, 0);
+                                      return Math.round((totalUsed / devices[0].size) * 100);
+                                    })()}
                                     sx={{ height: 6, borderRadius: 3, mt: 1 }}
                                   />
                                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.75rem' }}>
-                                    {formatBytes(devices.reduce((acc, dev) => acc + (dev.filesystem?.used || 0), 0))} /{' '}
-                                    {formatBytes(devices[0].size)}
+                                    {(() => {
+                                      const mountedPartitions = devices.filter(dev => dev.type === 'part' && dev.mount && dev.filesystem);
+                                      const totalUsed = mountedPartitions.reduce((acc, dev) => acc + dev.filesystem!.used, 0);
+                                      return `${formatBytes(totalUsed)} / ${formatBytes(devices[0].size)} • ${Math.round((totalUsed / devices[0].size) * 100)}% used`;
+                                    })()}
                                   </Typography>
-                                </>
+                                </Box>
                               )}
                             </Box>
                             {expandedDevices.has(diskName) ? (

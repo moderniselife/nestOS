@@ -101,7 +101,7 @@ jobs:
       - name: Build and push Control Panel
         uses: docker/build-push-action@v5
         with:
-          context: ./packages/control-panel
+          context: .
           file: ./packages/control-panel/Dockerfile.dev
           push: true
           tags: |
@@ -111,7 +111,7 @@ jobs:
       - name: Build and push System Service
         uses: docker/build-push-action@v5
         with:
-          context: ./packages/system-service
+          context: .
           file: ./packages/system-service/Dockerfile.dev
           push: true
           tags: |

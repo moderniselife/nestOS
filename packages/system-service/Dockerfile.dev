@@ -15,14 +15,13 @@ RUN apt-get update && apt-get install -y \
 
 # Copy package files
 COPY package.json .
-COPY packages/system-service/package.json ./
 COPY turbo.json .
 
 # Install dependencies
 RUN npm install
 
 # Copy source code
-COPY packages/system-service .
+COPY . .
 
 # Expose port
 EXPOSE 3000

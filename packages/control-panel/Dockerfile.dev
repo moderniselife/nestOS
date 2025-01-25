@@ -11,14 +11,13 @@ RUN apt-get update && apt-get install -y \
 
 # Copy package files
 COPY package.json .
-COPY packages/control-panel/package.json ./
 COPY turbo.json .
 
 # Install dependencies
 RUN npm install
 
 # Copy source code
-COPY packages/control-panel .
+COPY . .
 
 # Expose port
 EXPOSE 8443

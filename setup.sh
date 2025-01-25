@@ -24,17 +24,43 @@ npm install
 # Set up git hooks
 echo -e "\n${BLUE}Setting up git hooks...${NC}"
 if [ -d .git ]; then
-    # Create hooks directory if it doesn't exist
+    # Create hooks directory if it doesn't exist s
     mkdir -p .git/hooks
     
     # Pre-commit hook for linting
-    # Get full path to npm
-    NPM_PATH=$(which npm)
-    
-    # Create pre-commit hook with full npm path
-    cat > .git/hooks/pre-commit << EOF
+    # Create pre-commit hook with environment loading
+    cat > .git/hooks/pre-commit << 'EOF'
 #!/bin/bash
-$NPM_PATH run lint
+
+# Source profile to get proper environment
+if [ -f ~/.zshrc ]; then
+    source ~/.zshrc
+elif [ -f ~/.bash_profile ]; then
+    source ~/.bash_profile
+elif [ -f ~/.bashrc ]; then
+    source ~/.bashrc
+fi
+
+# Try to use nvm if available
+if [ -f ~/.nvm/nvm.sh ]; then
+    source ~/.nvm/nvm.sh
+    nvm use default > /dev/null 2>&1
+fi
+
+# Check if npm exists
+if ! command -v npm > /dev/null 2>&1; then
+    echo "Error: npm not found. Please ensure Node.js is installed and in your PATH"
+    exit 1
+fi
+
+# Get the git repo root directory
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# Change to the repo root directory
+cd "$REPO_ROOT"
+
+# Run lint command
+npm run lint
 EOF
     chmod +x .git/hooks/pre-commit
 fi

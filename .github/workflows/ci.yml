@@ -69,16 +69,24 @@ jobs:
             grub-efi-amd64-bin \
             mtools \
             tree \
-            file
+            file \
+            isolinux \
+            syslinux-utils \
+            syslinux-common \
+            genisoimage \
+            dosfstools
 
           echo "Verifying installed tools:"
-          which debootstrap squashfs-tools xorriso grub-mkrescue mksquashfs tree file
-
+          for tool in debootstrap xorriso grub-mkrescue mksquashfs tree file; do
+            echo "Checking $tool..."
+            which $tool || exit 1
+          done
+          
           echo "Tool versions:"
-          debootstrap --version
-          mksquashfs -version
-          xorriso -version
-          grub-mkrescue --version
+          echo "debootstrap version:" && debootstrap --version || true
+          echo "mksquashfs version:" && mksquashfs -version || true
+          echo "xorriso version:" && xorriso -version || true
+          echo "grub-mkrescue version:" && grub-mkrescue --version || true
 
       - name: Build packages
         run: |

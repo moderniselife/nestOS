@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { execa } from 'execa';
 import fs from 'fs-extra';
 import path from 'path';
@@ -42,13 +43,13 @@ async function setupBuildEnvironment() {
     }
 
     spinner.succeed('Build environment setup complete');
-
+    
     // Log directory structure
     console.log('\nBuild directory structure:');
     const { stdout } = await execa('tree', [BUILD_DIR]);
     console.log(stdout);
   } catch (error) {
-    spinner.fail(`Failed to setup build environment: ${error}`);
+    spinner.fail(`Failed to setup build environment: ${error instanceof Error ? error.message : 'Unknown error'}`);
     console.error('Full error:', error);
     throw error;
   }
@@ -66,7 +67,8 @@ async function downloadBaseSystem() {
     ]);
     spinner.succeed('Base system downloaded');
   } catch (error) {
-    spinner.fail(`Failed to download base system: ${error}`);
+    spinner.fail(`Failed to download base system: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Full error:', error);
     throw error;
   }
 }
@@ -101,7 +103,8 @@ async function configureSystem() {
 
     spinner.succeed('System configured');
   } catch (error) {
-    spinner.fail(`Failed to configure system: ${error}`);
+    spinner.fail(`Failed to configure system: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Full error:', error);
     throw error;
   }
 }
@@ -138,7 +141,8 @@ async function installPackages() {
 
     spinner.succeed('Packages installed');
   } catch (error) {
-    spinner.fail(`Failed to install packages: ${error}`);
+    spinner.fail(`Failed to install packages: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Full error:', error);
     throw error;
   }
 }
@@ -174,7 +178,8 @@ async function installNestOSComponents() {
 
     spinner.succeed('NestOS components installed');
   } catch (error) {
-    spinner.fail(`Failed to install NestOS components: ${error}`);
+    spinner.fail(`Failed to install NestOS components: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Full error:', error);
     throw error;
   }
 }
@@ -186,17 +191,17 @@ async function createISO() {
     spinner.text = 'Generating initramfs...';
     const initramfsResult = await execa('chroot', [
       CHROOT_DIR,
-      'update-initramfs', '-u', '-v'  // Added verbose flag
+      'update-initramfs', '-u', '-v'
     ]);
     console.log('Initramfs output:', initramfsResult.stdout);
 
     // Find and copy kernel and initrd
     spinner.text = 'Copying kernel and initrd...';
     const bootFiles = await fs.readdir(path.join(CHROOT_DIR, 'boot'));
-
+    
     const kernelFile = bootFiles.find(file => file.startsWith('vmlinuz-'));
     const initrdFile = bootFiles.find(file => file.startsWith('initrd.img-'));
-
+    
     if (!kernelFile || !initrdFile) {
       throw new Error('Kernel or initrd files not found');
     }
@@ -230,7 +235,7 @@ menuentry "NestOS" {
       CHROOT_DIR,
       path.join(ISO_DIR, 'live/filesystem.squashfs'),
       '-comp', 'xz',
-      '-info'  // Added info flag for more output
+      '-info'
     ]);
     console.log('Squashfs creation output:', squashfsResult.stdout);
 
@@ -239,14 +244,40 @@ menuentry "NestOS" {
     const { stdout: treeOutput } = await execa('tree', [ISO_DIR]);
     console.log('ISO directory structure:', treeOutput);
 
-    // Create ISO
-    spinner.text = 'Creating final ISO image...';
-    const grubResult = await execa('grub-mkrescue', [
-      '-o', path.join(BUILD_DIR, 'nestos.iso'),
-      ISO_DIR,
-      '--verbose'
-    ]);
-    console.log('GRUB mkrescue output:', grubResult.stdout);
+    // Try creating ISO with grub-mkrescue first
+    try {
+      spinner.text = 'Creating ISO with grub-mkrescue...';
+      const grubResult = await execa('grub-mkrescue', [
+        '-o', path.join(BUILD_DIR, 'nestos.iso'),
+        ISO_DIR,
+        '--verbose'
+      ]);
+      console.log('GRUB mkrescue output:', grubResult.stdout);
+    } catch (grubError) {
+      console.warn('grub-mkrescue failed, falling back to genisoimage...');
+      console.error('grub-mkrescue error:', grubError);
+
+      // Fallback to genisoimage
+      spinner.text = 'Creating ISO with genisoimage...';
+      await execa('genisoimage', [
+        '-o', path.join(BUILD_DIR, 'nestos.iso'),
+        '-b', 'boot/grub/i386-pc/eltorito.img',
+        '-no-emul-boot',
+        '-boot-load-size', '4',
+        '-boot-info-table',
+        '-R',
+        '-J',
+        '-v',
+        '-T',
+        ISO_DIR
+      ]);
+
+      // Make ISO bootable with isohybrid
+      spinner.text = 'Making ISO bootable with isohybrid...';
+      await execa('isohybrid', [
+        path.join(BUILD_DIR, 'nestos.iso')
+      ]);
+    }
 
     // Verify ISO was created and get its size
     const isoExists = await fs.pathExists(path.join(BUILD_DIR, 'nestos.iso'));
@@ -261,14 +292,14 @@ menuentry "NestOS" {
   } catch (error) {
     spinner.fail(`Failed to create ISO image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     console.error('Full error details:');
-
+    
     if (error && typeof error === 'object') {
       // Safe type assertion since we checked it's an object
       const err = error as { [key: string]: unknown };
       if ('stdout' in err) console.error('Command output:', err.stdout);
       if ('stderr' in err) console.error('Command error:', err.stderr);
     }
-
+    
     throw error;
   }
 }

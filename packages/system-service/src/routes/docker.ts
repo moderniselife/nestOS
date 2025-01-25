@@ -19,13 +19,18 @@ const containerSchema = z.object({
   restart: z.enum(['no', 'always', 'on-failure', 'unless-stopped']).optional()
 });
 
+const containerQuerySchema = z.object({
+  all: z
+    .string()
+    .optional()
+    .transform((val) => val === 'true')
+    .pipe(z.boolean().optional().default(false))
+});
+
 export const dockerRoutes: FastifyPluginAsync = async (fastify) => {
   // List containers
   fastify.get('/containers', async (request) => {
-    const { all } = z.object({
-      all: z.boolean().optional().default(false)
-    }).parse(request.query);
-
+    const { all } = containerQuerySchema.parse(request.query);
     const containers = await docker.listContainers({ all });
     return containers;
   });
@@ -101,13 +106,17 @@ export const dockerRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Remove container
   fastify.delete('/containers/:id', async (request) => {
-    const { id, force } = z.object({
+    const { id } = z.object({
       id: z.string(),
-      force: z.boolean().optional().default(false)
+      force: z
+        .string()
+        .optional()
+        .transform((val) => val === 'true')
+        .pipe(z.boolean().optional().default(false))
     }).parse(request.params);
 
     const container = docker.getContainer(id);
-    await container.remove({ force });
+    await container.remove({ force: false });
     return { status: 'removed' };
   });
 
@@ -145,13 +154,17 @@ export const dockerRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Remove image
   fastify.delete('/images/:id', async (request) => {
-    const { id, force } = z.object({
+    const { id } = z.object({
       id: z.string(),
-      force: z.boolean().optional().default(false)
+      force: z
+        .string()
+        .optional()
+        .transform((val) => val === 'true')
+        .pipe(z.boolean().optional().default(false))
     }).parse(request.params);
 
     const image = docker.getImage(id);
-    await image.remove({ force });
+    await image.remove({ force: false });
     return { status: 'removed' };
   });
 

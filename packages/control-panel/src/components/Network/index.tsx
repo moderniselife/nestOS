@@ -16,7 +16,8 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Check as DefaultIcon
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { apiUrl } from '../../App';
@@ -34,6 +35,8 @@ interface NetworkInterface {
   duplex: string;
   speed: number;
   dhcp: boolean;
+  default: boolean;
+  gateway?: string;
 }
 
 function getConnectionStatusColor(state: string): 'success' | 'error' | 'warning' {
@@ -48,7 +51,7 @@ function getConnectionStatusColor(state: string): 'success' | 'error' | 'warning
 }
 
 export default function Network() {
-  const { data: networkInfo, isLoading } = useQuery({
+  const { data: networkData, isLoading } = useQuery({
     queryKey: ['network-info'],
     queryFn: async () => {
       const response = await fetch(`${apiUrl}/api/network/interfaces`);
@@ -98,7 +101,7 @@ export default function Network() {
       </Stack>
 
       <Grid container spacing={3}>
-        {networkInfo?.map((iface: NetworkInterface) => (
+        {networkData?.interfaces.map((iface: NetworkInterface) => (
           <Grid item xs={12} md={6} key={iface.iface}>
             <Card>
               <CardContent>
@@ -106,13 +109,22 @@ export default function Network() {
                   <NetworkIcon color="primary" />
                   <Box sx={{ flexGrow: 1 }}>
                     <Typography variant="h6">
-                      {iface.ifaceName}
+                      {iface.ifaceName || iface.iface}
                       <Chip
                         size="small"
                         label={iface.operstate}
                         color={getConnectionStatusColor(iface.operstate)}
                         sx={{ ml: 1 }}
                       />
+                      {iface.default && (
+                        <Chip
+                          size="small"
+                          label="Default"
+                          color="primary"
+                          icon={<DefaultIcon />}
+                          sx={{ ml: 1 }}
+                        />
+                      )}
                       {iface.internal && (
                         <Chip
                           size="small"
@@ -182,6 +194,14 @@ export default function Network() {
                         {iface.dhcp ? 'Enabled' : 'Disabled'}
                       </Typography>
                     </Grid>
+                    {iface.gateway && (
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Gateway
+                        </Typography>
+                        <Typography variant="body2">{iface.gateway}</Typography>
+                      </Grid>
+                    )}
                   </Grid>
                 </Box>
               </CardContent>

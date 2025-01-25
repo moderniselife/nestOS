@@ -255,32 +255,59 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         };
       } else {
         // macOS or Linux without fio
-        const diskTest = await Promise.all([
-          execAsync('dd if=/dev/zero of=/tmp/testfile bs=1m count=1000 2>&1'),
-          execAsync('dd if=/tmp/testfile of=/dev/null bs=1m count=1000 2>&1')
-        ]);
+        // Create a large test file first
+        await execAsync('dd if=/dev/zero of=/tmp/testfile bs=128m count=8 2>&1');
 
-        const parseSpeed = (output: { stdout: string; stderr: string }): number => {
-          const match = (output.stderr || output.stdout).match(/([0-9.]+)\s*([kMG])?B\/s/);
-          if (!match) return 0;
-          const [, value, unit = 'M'] = match;
-          const val = parseFloat(value);
-          switch (unit) {
-            case 'G': return val * 1024;
-            case 'M': return val;
-            case 'k': return val / 1024;
-            default: return val;
+        // Run multiple tests to get more accurate results
+        const runTest = async (cmd: string) => {
+          const { stderr } = await execAsync(cmd);
+          // Try macOS format first
+          const bytesPerSecMatch = stderr.match(/\((\d+)\s+bytes\/sec\)/);
+          if (bytesPerSecMatch) {
+            const bytesPerSec = parseInt(bytesPerSecMatch[1], 10);
+            return bytesPerSec / (1024 * 1024); // Convert bytes/sec to MB/s
           }
+
+          // Try Linux format
+          const linuxMatch = stderr.match(/([0-9.]+)\s*([kMG])?B\/s/);
+          if (linuxMatch) {
+            const [, value, unit = 'M'] = linuxMatch;
+            const val = parseFloat(value);
+            switch (unit) {
+              case 'G': return val * 1024;
+              case 'M': return val;
+              case 'k': return val / 1024;
+              default: return val;
+            }
+          }
+
+          return 0;
         };
 
+        // Run multiple iterations and take the average
+        const iterations = 3;
+        let writeSpeed = 0;
+        let readSpeed = 0;
+
+        for (let i = 0; i < iterations; i++) {
+          writeSpeed += await runTest('dd if=/dev/zero of=/tmp/testfile bs=128m count=8 2>&1');
+          readSpeed += await runTest('dd if=/tmp/testfile of=/dev/null bs=128m count=8 2>&1');
+        }
+
+        writeSpeed = writeSpeed / iterations;
+        readSpeed = readSpeed / iterations;
+
         // Calculate IOPS using small block size reads
-        const iopsTest = await execAsync('dd if=/tmp/testfile of=/dev/null bs=4k count=1000 2>&1');
-        const iopsSpeed = parseSpeed(iopsTest);
-        const iops = Math.round((iopsSpeed * 1024 * 1024) / 4096); // Convert MB/s to 4K IOPS
+        const iopsTests = await Promise.all(Array.from({ length: 5 }).map(() => 
+          runTest('dd if=/tmp/testfile of=/dev/null bs=4k count=1000 2>&1')
+        ));
+
+        const avgIopsSpeed = iopsTests.reduce((a, b) => a + b, 0) / iopsTests.length;
+        const iops = Math.round((avgIopsSpeed * 1024 * 1024) / 4096); // Convert MB/s to 4K IOPS
 
         diskResults = {
-          writeSpeed: parseSpeed(diskTest[0]),
-          readSpeed: parseSpeed(diskTest[1]),
+          writeSpeed,
+          readSpeed,
           iops
         };
       }

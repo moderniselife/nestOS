@@ -28,9 +28,13 @@ if [ -d .git ]; then
     mkdir -p .git/hooks
     
     # Pre-commit hook for linting
-    cat > .git/hooks/pre-commit << 'EOF'
+    # Get full path to npm
+    NPM_PATH=$(which npm)
+    
+    # Create pre-commit hook with full npm path
+    cat > .git/hooks/pre-commit << EOF
 #!/bin/bash
-npm run lint
+$NPM_PATH run lint
 EOF
     chmod +x .git/hooks/pre-commit
 fi

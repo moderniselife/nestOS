@@ -116,21 +116,29 @@ const plugin: FastifyPluginAsync = async (fastify) => {
       limit: number;
     };
   }) {
-    const used = stats.memory_stats.usage;
-    const limit = stats.memory_stats.limit;
+    const { usage: used, limit } = stats.memory_stats;
     const percent = ((used / limit) * 100).toFixed(2);
     return `${formatBytes(used)} / ${formatBytes(limit)} (${percent}%)`;
   }
 
-  function formatNetworkIO(stats: { networks: { [key: string]: { rx_bytes: number; tx_bytes: number } } }) {
-    const rx = Object.values(stats.networks || {}).reduce((acc: number, net: any) => acc + net.rx_bytes, 0);
-    const tx = Object.values(stats.networks || {}).reduce((acc: number, net: any) => acc + net.tx_bytes, 0);
+  function formatNetworkIO(stats: {
+    networks: { [key: string]: { rx_bytes: number; tx_bytes: number } }
+  }) {
+    const rx = Object.values(stats.networks || {})
+      .reduce((acc: number, net: { rx_bytes: number }) => acc + net.rx_bytes, 0);
+    const tx = Object.values(stats.networks || {})
+      .reduce((acc: number, net: { tx_bytes: number }) => acc + net.tx_bytes, 0);
     return `↓${formatBytes(rx)} / ↑${formatBytes(tx)}`;
   }
 
-  function formatBlockIO(stats: { blkio_stats: { io_service_bytes_recursive: any[] } }) {
-    const read = stats.blkio_stats.io_service_bytes_recursive?.find((s: any) => s.op === 'Read')?.value || 0;
-    const write = stats.blkio_stats.io_service_bytes_recursive?.find((s: any) => s.op === 'Write')?.value || 0;
+  interface BlockIOStats {
+    op: string;
+    value: number;
+  }
+
+  function formatBlockIO(stats: { blkio_stats?: { io_service_bytes_recursive?: BlockIOStats[] } }) {
+    const read = stats.blkio_stats?.io_service_bytes_recursive?.find(s => s.op === 'Read')?.value || 0;
+    const write = stats.blkio_stats?.io_service_bytes_recursive?.find(s => s.op === 'Write')?.value || 0;
     return `↓${formatBytes(read)} / ↑${formatBytes(write)}`;
   }
 
@@ -188,7 +196,7 @@ export const dockerRoutes: FastifyPluginAsync = async (fastify) => {
     const { image, name, ports, volumes, env, restart } = containerSchema.parse(request.body);
 
     const portBindings: Docker.PortMap = {};
-    const exposedPorts: { [key: string]: {} } = {};
+    const exposedPorts: Record<string, Record<string, never>> = {};
 
     ports?.forEach(({ container, host }) => {
       const portStr = `${container}/tcp`;
@@ -263,13 +271,13 @@ export const dockerRoutes: FastifyPluginAsync = async (fastify) => {
     }).parse(request.body);
 
     await new Promise((resolve, reject) => {
-      docker.pull(image, (err: any, stream: any) => {
+      docker.pull(image, (err: Error | null, stream: NodeJS.ReadableStream) => {
         if (err) {
           reject(err);
           return;
         }
 
-        docker.modem.followProgress(stream, (err: any, output: any) => {
+        docker.modem.followProgress(stream, (err: Error | null, output: unknown) => {
           if (err) {
             reject(err);
             return;

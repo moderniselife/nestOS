@@ -19,20 +19,37 @@ interface MountPoint {
 }
 
 // Validation schemas
-const healthResponseSchema = z.object({
-  overall: z.enum(['healthy', 'warning', 'critical']),
-  devices: z.array(z.object({
-    name: z.string(),
-    status: z.enum(['healthy', 'warning', 'critical']),
-    smart: z.object({
-      health: z.string(),
-      temperature: z.number().optional(),
-      powerOnHours: z.number().optional(),
-      reallocatedSectors: z.number().optional()
-    }).optional(),
-    issues: z.array(z.string())
-  }))
-});
+const healthResponseSchema = {
+  type: 'object',
+  properties: {
+    overall: { type: 'string', enum: ['healthy', 'warning', 'critical'] },
+    devices: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          status: { type: 'string', enum: ['healthy', 'warning', 'critical'] },
+          smart: {
+            type: 'object',
+            properties: {
+              health: { type: 'string' },
+              temperature: { type: 'number' },
+              powerOnHours: { type: 'number' },
+              reallocatedSectors: { type: 'number' }
+            }
+          },
+          issues: {
+            type: 'array',
+            items: { type: 'string' }
+          }
+        },
+        required: ['name', 'status', 'issues']
+      }
+    }
+  },
+  required: ['overall', 'devices']
+}
 
 const volumeSchema = z.object({
   name: z.string(),
@@ -59,37 +76,7 @@ export const storageRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/health', {
     schema: {
       response: {
-        200: {
-          type: 'object',
-          properties: {
-            overall: { type: 'string', enum: ['healthy', 'warning', 'critical'] },
-            devices: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  status: { type: 'string', enum: ['healthy', 'warning', 'critical'] },
-                  smart: {
-                    type: 'object',
-                    properties: {
-                      health: { type: 'string' },
-                      temperature: { type: 'number' },
-                      powerOnHours: { type: 'number' },
-                      reallocatedSectors: { type: 'number' }
-                    }
-                  },
-                  issues: {
-                    type: 'array',
-                    items: { type: 'string' }
-                  }
-                },
-                required: ['name', 'status', 'issues']
-              }
-            }
-          },
-          required: ['overall', 'devices']
-        }
+        200: healthResponseSchema
       }
     }
   }, async () => {
@@ -139,7 +126,7 @@ export const storageRoutes: FastifyPluginAsync = async (fastify) => {
 
       // Determine overall system status
       const overall = devices.some(d => d.status === 'critical') ? 'critical' :
-                     devices.some(d => d.status === 'warning') ? 'warning' : 'healthy';
+        devices.some(d => d.status === 'warning') ? 'warning' : 'healthy';
 
       return {
         overall,
@@ -174,7 +161,7 @@ export const storageRoutes: FastifyPluginAsync = async (fastify) => {
             fsSize: fsSize.map(f => ({ fs: f.fs, size: f.size, used: f.used })),
             matchedFs: fs
           });
-          
+
           // Get SMART data if available
           let smart = null;
           try {
@@ -232,7 +219,7 @@ export const storageRoutes: FastifyPluginAsync = async (fastify) => {
   // Create volume
   fastify.post('/volumes', async (request) => {
     const config = volumeSchema.parse(request.body);
-    
+
     try {
       switch (config.type) {
         case 'single': {

@@ -5,6 +5,42 @@ import Docker from 'dockerode';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
+interface BlockDevice {
+  name: string;
+  type: string;
+  fstype: string;
+  mount: string;
+  size: number;
+  physical: string;
+  uuid: string;
+  label: string;
+  model: string;
+  serial: string;
+  removable: boolean;
+  protocol: string;
+}
+
+interface FileSystem {
+  fs: string;
+  type: string;
+  size: number;
+  used: number;
+  available: number;
+  use: number;
+  mount: string;
+}
+
+interface NetworkStats {
+  iface: string;
+  operstate: string;
+  rx_bytes: number;
+  rx_dropped: number;
+  rx_errors: number;
+  tx_bytes: number;
+  tx_dropped: number;
+  tx_errors: number;
+}
+
 interface SystemMetrics {
   cpu: {
     load: number;
@@ -21,10 +57,10 @@ interface SystemMetrics {
     swapFree: number;
   };
   disks: {
-    devices: any[];
-    filesystems: any[];
+    devices: BlockDevice[];
+    filesystems: FileSystem[];
   };
-  network: any[];
+  network: NetworkStats[];
   docker: {
     containers: {
       total: number;

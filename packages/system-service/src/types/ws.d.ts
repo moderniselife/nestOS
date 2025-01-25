@@ -1,6 +1,7 @@
 declare module 'ws' {
   import { EventEmitter } from 'events';
-  import { IncomingMessage } from 'http';
+  import { IncomingMessage, Server as HttpServer } from 'http';
+  import { Server as HttpsServer } from 'https';
   import { Duplex } from 'stream';
 
   class WebSocket extends EventEmitter {
@@ -17,11 +18,11 @@ declare module 'ws' {
     url: string;
 
     close(code?: number, data?: string | Buffer): void;
-    ping(data?: any, mask?: boolean, cb?: (err: Error) => void): void;
-    pong(data?: any, mask?: boolean, cb?: (err: Error) => void): void;
-    send(data: any, cb?: (err?: Error) => void): void;
+    ping(data?: WebSocket.Data, mask?: boolean, cb?: (err: Error) => void): void;
+    pong(data?: WebSocket.Data, mask?: boolean, cb?: (err: Error) => void): void;
+    send(data: WebSocket.Data, cb?: (err?: Error) => void): void;
     send(
-      data: any,
+      data: WebSocket.Data,
       options: {
         mask?: boolean;
         binary?: boolean;
@@ -39,7 +40,12 @@ declare module 'ws' {
     on(event: 'message', listener: (data: WebSocket.Data) => void): this;
     on(event: 'open', listener: () => void): this;
     on(event: 'ping' | 'pong', listener: (data: Buffer) => void): this;
-    on(event: string | symbol, listener: (...args: any[]) => void): this;
+    on(event: 'close', listener: (code: number, reason: Buffer) => void): this;
+    on(event: 'error', listener: (err: Error) => void): this;
+    on(event: 'message', listener: (data: WebSocket.Data) => void): this;
+    on(event: 'open', listener: () => void): this;
+    on(event: 'ping' | 'pong', listener: (data: Buffer) => void): this;
+    on(event: string | symbol, listener: (...args: []) => void): this;
   }
 
   namespace WebSocket {
@@ -99,7 +105,7 @@ declare module 'ws' {
     on(event: 'connection', cb: (socket: WebSocket, request: IncomingMessage) => void): this;
     on(event: 'error', cb: (error: Error) => void): this;
     on(event: 'headers', cb: (headers: string[], request: IncomingMessage) => void): this;
-    on(event: string | symbol, listener: (...args: any[]) => void): this;
+    on(event: string | symbol, listener: (...args: unknown[]) => void): this;
   }
 
   namespace WebSocketServer {
@@ -107,7 +113,7 @@ declare module 'ws' {
       host?: string;
       port?: number;
       backlog?: number;
-      server?: any;
+      server?: HttpServer | HttpsServer;
       verifyClient?: VerifyClientCallbackAsync | VerifyClientCallbackSync;
       handleProtocols?: (protocols: Set<string>, request: IncomingMessage) => string | false;
       path?: string;

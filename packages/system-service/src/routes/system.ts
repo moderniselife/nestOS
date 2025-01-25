@@ -183,11 +183,10 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       // CPU Performance Test
       const cpuTest = await Promise.all([
         // Single core test (using one worker)
-        new Promise<number>(async (resolve) => {
+        new Promise<number>((resolve) => {
           const startTime = process.hrtime.bigint();
-          let operations = 0;
           for (let i = 0; i < 1000000; i++) {
-            operations += Math.sqrt(i);
+            Math.sqrt(i);
           }
           const endTime = process.hrtime.bigint();
           resolve(Number(endTime - startTime) / 1e6); // Convert to milliseconds
@@ -201,7 +200,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       // Memory Performance Test using Node.js buffer operations
       const memoryTest = await Promise.all([
         // Memory read speed test
-        new Promise<number>(async (resolve) => {
+        new Promise<number>((resolve) => {
           const size = 1024 * 1024 * 100; // 100MB
           const buffer = Buffer.alloc(size);
           const iterations = 10;
@@ -218,7 +217,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
           resolve(throughput);
         }),
         // Memory write speed test
-        new Promise<number>(async (resolve) => {
+        new Promise<number>((resolve) => {
           const size = 1024 * 1024 * 100; // 100MB
           const iterations = 10;
           const startTime = process.hrtime.bigint();
@@ -234,7 +233,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
           resolve(throughput);
         }),
         // Memory latency test
-        new Promise<number>(async (resolve) => {
+        new Promise<number>((resolve) => {
           const startTime = process.hrtime.bigint();
           const buffer = Buffer.alloc(1024 * 1024 * 100); // 100MB
           buffer.fill(0);
@@ -299,9 +298,13 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
           try {
             const { stdout, stderr } = await execAsync(`/bin/dd ${cmd} 2>&1`);
             return stderr || stdout;
-          } catch (error: any) {
+          } catch (error) {
             // On macOS, dd outputs to stderr even on success
-            return error.stderr || error.stdout || '';
+            if (error && typeof error === 'object' && ('stderr' in error || 'stdout' in error)) {
+              const execError = error as { stderr?: string; stdout?: string };
+              return execError.stderr || execError.stdout || '';
+            }
+            return '';
           }
         };
 
@@ -473,7 +476,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Update settings
   fastify.post('/updates/settings', async (request) => {
-    const body = request.body as { autoUpdate: boolean; schedule?: string };
+    const body = updateSettingsSchema.parse(request.body);
     
     try {
       // Read existing crontab

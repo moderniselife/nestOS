@@ -6,18 +6,30 @@ import si from 'systeminformation';
 
 const execAsync = promisify(exec);
 
-const networkTestResponseSchema = z.object({
-  ping: z.object({
-    host: z.string(),
-    latency: z.number(),
-    packetLoss: z.number()
-  }),
-  speedtest: z.object({
-    download: z.number(),
-    upload: z.number(),
-    latency: z.number()
-  }).optional()
-});
+const networkTestResponseSchema = {
+  type: 'object',
+  properties: {
+    ping: {
+      type: 'object',
+      properties: {
+        host: { type: 'string' },
+        latency: { type: 'number' },
+        packetLoss: { type: 'number' }
+      },
+      required: ['host', 'latency', 'packetLoss']
+    },
+    speedtest: {
+      type: 'object',
+      properties: {
+        download: { type: 'number' },
+        upload: { type: 'number' },
+        latency: { type: 'number' }
+      },
+      required: ['download', 'upload', 'latency']
+    }
+  },
+  required: ['ping']
+};
 
 const interfaceSchema = z.object({
   iface: z.string(),
@@ -45,30 +57,7 @@ export const networkRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/test', {
     schema: {
       response: {
-        200: {
-          type: 'object',
-          properties: {
-            ping: {
-              type: 'object',
-              properties: {
-                host: { type: 'string' },
-                latency: { type: 'number' },
-                packetLoss: { type: 'number' }
-              },
-              required: ['host', 'latency', 'packetLoss']
-            },
-            speedtest: {
-              type: 'object',
-              properties: {
-                download: { type: 'number' },
-                upload: { type: 'number' },
-                latency: { type: 'number' }
-              },
-              required: ['download', 'upload', 'latency']
-            }
-          },
-          required: ['ping']
-        }
+        200: networkTestResponseSchema
       }
     }
   }, async () => {
@@ -77,85 +66,85 @@ export const networkRoutes: FastifyPluginAsync = async (fastify) => {
       const { stdout: pingOutput } = await execAsync('ping -c 5 8.8.8.8');
       const pingStats = analyzePingOutput(pingOutput);
 
-            // Custom speedtest implementation using smaller test sizes
-            const testSize = 512 * 1024; // 512KB for quicker tests
-            
-            // Test download speed using httpbin's bytes endpoint
-            const downloadTest = async () => {
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 5000);
-              
-              try {
-                const startTime = Date.now();
-                const res = await fetch(`https://httpbin.org/bytes/${testSize}`, {
-                  signal: controller.signal
-                });
-                await res.arrayBuffer();
-                const endTime = Date.now();
-                const duration = (endTime - startTime) / 1000; // seconds
-                return (testSize * 8) / (1000000 * duration); // Mbps
-              } finally {
-                clearTimeout(timeoutId);
-              }
-            };
-      
-            // Test upload speed using httpbin's post endpoint
-            const uploadTest = async () => {
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 5000);
-              
-              try {
-                const randomData = Buffer.alloc(testSize);
-                const startTime = Date.now();
-                await fetch('https://httpbin.org/post', {
-                  method: 'POST',
-                  body: randomData,
-                  signal: controller.signal
-                });
-                const endTime = Date.now();
-                const duration = (endTime - startTime) / 1000; // seconds
-                return (testSize * 8) / (1000000 * duration); // Mbps
-              } finally {
-                clearTimeout(timeoutId);
-              }
-            };
-      
-            // Run tests multiple times and average the results
-            const runTests = async (testFn: () => Promise<number>) => {
-              const tests = 2; // Reduced number of tests for faster completion
-              let totalSpeed = 0;
-              let completedTests = 0;
-      
-              for (let i = 0; i < tests; i++) {
-                try {
-                  const speed = await testFn();
-                  totalSpeed += speed;
-                  completedTests++;
-                } catch (error: unknown) {
-                  console.error(`Test iteration ${i + 1} failed:`, error);
-                }
-              }
-      
-              return completedTests > 0 ? totalSpeed / completedTests : 0;
-            };
-      
-            // Run download and upload tests
-            const [downloadSpeed, uploadSpeed] = await Promise.all([
-              runTests(downloadTest),
-              runTests(uploadTest)
-            ]);
-      
-            return {
-              ping: {
-                host: '8.8.8.8',
-                latency: pingStats.latency,
-                packetLoss: pingStats.packetLoss
-              },
-              speedtest: {
-                download: downloadSpeed,
-                upload: uploadSpeed,
-                latency: pingStats.latency // Using ping latency for now
-              }
+      // Custom speedtest implementation using smaller test sizes
+      const testSize = 512 * 1024; // 512KB for quicker tests
+
+      // Test download speed using httpbin's bytes endpoint
+      const downloadTest = async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        try {
+          const startTime = Date.now();
+          const res = await fetch(`https://httpbin.org/bytes/${testSize}`, {
+            signal: controller.signal
+          });
+          await res.arrayBuffer();
+          const endTime = Date.now();
+          const duration = (endTime - startTime) / 1000; // seconds
+          return (testSize * 8) / (1000000 * duration); // Mbps
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      };
+
+      // Test upload speed using httpbin's post endpoint
+      const uploadTest = async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        try {
+          const randomData = Buffer.alloc(testSize);
+          const startTime = Date.now();
+          await fetch('https://httpbin.org/post', {
+            method: 'POST',
+            body: randomData,
+            signal: controller.signal
+          });
+          const endTime = Date.now();
+          const duration = (endTime - startTime) / 1000; // seconds
+          return (testSize * 8) / (1000000 * duration); // Mbps
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      };
+
+      // Run tests multiple times and average the results
+      const runTests = async (testFn: () => Promise<number>) => {
+        const tests = 2; // Reduced number of tests for faster completion
+        let totalSpeed = 0;
+        let completedTests = 0;
+
+        for (let i = 0; i < tests; i++) {
+          try {
+            const speed = await testFn();
+            totalSpeed += speed;
+            completedTests++;
+          } catch (error: unknown) {
+            console.error(`Test iteration ${i + 1} failed:`, error);
+          }
+        }
+
+        return completedTests > 0 ? totalSpeed / completedTests : 0;
+      };
+
+      // Run download and upload tests
+      const [downloadSpeed, uploadSpeed] = await Promise.all([
+        runTests(downloadTest),
+        runTests(uploadTest)
+      ]);
+
+      return {
+        ping: {
+          host: '8.8.8.8',
+          latency: pingStats.latency,
+          packetLoss: pingStats.packetLoss
+        },
+        speedtest: {
+          download: downloadSpeed,
+          upload: uploadSpeed,
+          latency: pingStats.latency // Using ping latency for now
+        }
       };
     } catch (error) {
       console.error('Network test error:', error);
@@ -207,7 +196,7 @@ export const networkRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       // Generate network configuration
       let configContent = `auto ${iface}\n`;
-      
+
       if (config.dhcp) {
         configContent += `iface ${iface} inet dhcp\n`;
       } else if (config.ip4) {
@@ -223,7 +212,7 @@ export const networkRoutes: FastifyPluginAsync = async (fastify) => {
 
       // Write configuration
       await execAsync(`echo '${configContent}' > /etc/network/interfaces.d/${iface}`);
-      
+
       // Apply configuration
       await execAsync(`ifdown ${iface} && ifup ${iface}`);
 

@@ -15,7 +15,7 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider
+  Divider,
 } from '@mui/material';
 import {
   Memory as CpuIcon,
@@ -31,10 +31,53 @@ import {
   Warning as WarningIcon,
   NetworkCheck as NetworkIcon,
   Memory as ChipIcon,
-  Build as BuildIcon
+  Build as BuildIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiUrl } from '../../App';
+
+interface StorageDevice {
+  name: string;
+  identifier: string;
+  type: string;
+  fsType: string;
+  mount: string;
+  size: number;
+  physical: string;
+  uuid: string;
+  label: string;
+  model: string;
+  serial: string;
+  removable: boolean;
+  protocol: string;
+  group: string;
+  device: string;
+  smart: {
+    health: string;
+    attributes: string;
+  } | null;
+  layout: any | null;
+  filesystem: {
+    size: number;
+    used: number;
+    available: number;
+    use: number;
+  } | null;
+}
+
+interface StorageInfo {
+  devices: StorageDevice[];
+}
+
+interface NetworkStat {
+  iface: string;
+  rx_sec: number;
+  tx_sec: number;
+}
+
+interface NetworkStats {
+  stats: NetworkStat[];
+}
 
 function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -64,22 +107,24 @@ export default function Dashboard() {
       }
       return response.json();
     },
-    refetchInterval: 5000
+    refetchInterval: 5000,
   });
 
-  const { data: storageInfo, isLoading: storageLoading } = useQuery({
+  const { data: storageInfo, isLoading: storageLoading } = useQuery<StorageInfo>({
     queryKey: ['storage-info'],
     queryFn: async () => {
       const response = await fetch(`${apiUrl}/api/storage/devices`);
       if (!response.ok) {
         throw new Error('Failed to fetch storage info');
       }
-      return response.json();
+      const data = await response.json();
+      console.log('Storage Info:', data); // Debug log
+      return data;
     },
-    refetchInterval: 10000
+    refetchInterval: 10000,
   });
 
-  const { data: networkStats, isLoading: networkLoading } = useQuery({
+  const { data: networkStats, isLoading: networkLoading } = useQuery<NetworkStats>({
     queryKey: ['network-stats'],
     queryFn: async () => {
       const response = await fetch(`${apiUrl}/api/network/stats`);
@@ -88,37 +133,37 @@ export default function Dashboard() {
       }
       return response.json();
     },
-    refetchInterval: 2000
+    refetchInterval: 2000,
   });
 
   const rebootMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(`${apiUrl}/api/system/reboot`, {
-        method: 'POST'
+        method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to reboot system');
       return response.json();
-    }
+    },
   });
 
   const shutdownMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(`${apiUrl}/api/system/shutdown`, {
-        method: 'POST'
+        method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to shutdown system');
       return response.json();
-    }
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(`${apiUrl}/api/system/update`, {
-        method: 'POST'
+        method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to update system');
       return response.json();
-    }
+    },
   });
 
   if (systemLoading || storageLoading || networkLoading) {
@@ -133,9 +178,10 @@ export default function Dashboard() {
     );
   }
 
-  const memoryUsagePercent = Math.round(
-    (systemInfo.memory.used / systemInfo.memory.total) * 100
-  );
+  const memoryUsagePercent = Math.round((systemInfo.memory.used / systemInfo.memory.total) * 100);
+
+  // Debug log for storage devices
+  console.log('Storage Devices:', storageInfo?.devices);
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -206,9 +252,7 @@ export default function Dashboard() {
                 <Typography variant="subtitle2" color="text.secondary">
                   Uptime
                 </Typography>
-                <Typography variant="body1">
-                  {formatUptime(systemInfo.uptime)}
-                </Typography>
+                <Typography variant="body1">{formatUptime(systemInfo.uptime)}</Typography>
               </Grid>
             </Grid>
           </Paper>
@@ -253,9 +297,7 @@ export default function Dashboard() {
                               value={load}
                               sx={{ height: 5, borderRadius: 5 }}
                             />
-                            <Typography variant="caption">
-                              {Math.round(load)}%
-                            </Typography>
+                            <Typography variant="caption">{Math.round(load)}%</Typography>
                           </Box>
                         </Tooltip>
                       </Grid>
@@ -284,8 +326,8 @@ export default function Dashboard() {
                   sx={{ height: 10, borderRadius: 5 }}
                 />
                 <Typography variant="body2" sx={{ mt: 1 }}>
-                  {formatBytes(systemInfo.memory.used)} /{' '}
-                  {formatBytes(systemInfo.memory.total)} ({memoryUsagePercent}%)
+                  {formatBytes(systemInfo.memory.used)} / {formatBytes(systemInfo.memory.total)} (
+                  {memoryUsagePercent}%)
                 </Typography>
               </Box>
               <Box sx={{ mt: 2 }}>
@@ -307,47 +349,58 @@ export default function Dashboard() {
         </Grid>
 
         {/* Storage Status */}
-        {storageInfo?.devices && storageInfo.devices.length > 0 && (
-          <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-                  <DiskIcon color="primary" />
-                  <Typography variant="h6">Storage</Typography>
-                </Stack>
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+                <DiskIcon color="primary" />
+                <Typography variant="h6">Storage</Typography>
+              </Stack>
+              {!storageInfo?.devices || storageInfo.devices.length === 0 ? (
+                <Typography color="text.secondary">No storage devices found</Typography>
+              ) : (
                 <Grid container spacing={2}>
-                  {storageInfo.devices.map((device: any) => (
-                    device.filesystem && (
-                      <Grid item xs={12} md={6} key={device.name}>
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="subtitle2">
-                            {device.name} ({device.type})
+                  {storageInfo.devices.map((device: StorageDevice) => (
+                    <Grid item xs={12} md={6} key={device.name}>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2">
+                          {device.name} ({device.physical})
+                          {device.model && ` - ${device.model}`}
+                        </Typography>
+                        {device.filesystem ? (
+                          <>
+                            <LinearProgress
+                              variant="determinate"
+                              value={device.filesystem.use || 0}
+                              sx={{ height: 8, borderRadius: 4, mt: 1 }}
+                            />
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                              {formatBytes(device.filesystem.used)} / {formatBytes(device.filesystem.size)}
+                            </Typography>
+                          </>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            {formatBytes(device.size)} Total
+                            {device.fsType && ` • ${device.fsType}`}
+                            {device.mount && ` • Mounted at ${device.mount}`}
                           </Typography>
-                          <LinearProgress
-                            variant="determinate"
-                            value={device.filesystem.use}
-                            sx={{ height: 8, borderRadius: 4, mt: 1 }}
+                        )}
+                        {device.smart && (
+                          <Chip
+                            size="small"
+                            sx={{ mt: 1 }}
+                            label={device.smart.health}
+                            color={device.smart.health === 'PASSED' ? 'success' : 'error'}
                           />
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                            {formatBytes(device.filesystem.used)} / {formatBytes(device.filesystem.size)}
-                            {device.smart && (
-                              <Chip
-                                size="small"
-                                sx={{ ml: 1 }}
-                                label={device.smart.health}
-                                color={device.smart.health === 'PASSED' ? 'success' : 'error'}
-                              />
-                            )}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    )
+                        )}
+                      </Box>
+                    </Grid>
                   ))}
                 </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-        )}
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
 
         {/* Network Status */}
         {networkStats?.stats && networkStats.stats.length > 0 && (
@@ -358,7 +411,7 @@ export default function Dashboard() {
                   <NetworkIcon color="primary" />
                   <Typography variant="h6">Network</Typography>
                 </Stack>
-                {networkStats.stats.map((stat: any) => (
+                {networkStats.stats.map((stat: NetworkStat) => (
                   <Box key={stat.iface} sx={{ mb: 2 }}>
                     <Typography variant="subtitle2">{stat.iface}</Typography>
                     <Grid container spacing={2}>
@@ -366,17 +419,13 @@ export default function Dashboard() {
                         <Typography variant="body2" color="text.secondary">
                           Download
                         </Typography>
-                        <Typography variant="body1">
-                          {formatSpeed(stat.rx_sec)}
-                        </Typography>
+                        <Typography variant="body1">{formatSpeed(stat.rx_sec)}</Typography>
                       </Grid>
                       <Grid item xs={6}>
                         <Typography variant="body2" color="text.secondary">
                           Upload
                         </Typography>
-                        <Typography variant="body1">
-                          {formatSpeed(stat.tx_sec)}
-                        </Typography>
+                        <Typography variant="body1">{formatSpeed(stat.tx_sec)}</Typography>
                       </Grid>
                     </Grid>
                   </Box>
@@ -431,9 +480,7 @@ export default function Dashboard() {
                     <Typography variant="subtitle2" color="text.secondary">
                       Total Containers
                     </Typography>
-                    <Typography variant="h6">
-                      {systemInfo.docker.containers.total}
-                    </Typography>
+                    <Typography variant="h6">{systemInfo.docker.containers.total}</Typography>
                   </Grid>
                   <Grid item xs={6} sm={3}>
                     <Typography variant="subtitle2" color="text.secondary">
@@ -464,9 +511,7 @@ export default function Dashboard() {
                   <Typography variant="subtitle2" color="text.secondary">
                     Images Available
                   </Typography>
-                  <Typography variant="h6">
-                    {systemInfo.docker.images}
-                  </Typography>
+                  <Typography variant="h6">{systemInfo.docker.images}</Typography>
                 </Box>
               </CardContent>
             </Card>

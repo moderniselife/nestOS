@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  control-panel:
+    build:
+      context: .
+      dockerfile: packages/control-panel/Dockerfile.dev
+    ports:
+      - "8443:8443"
+    volumes:
+      - .:/workspace
+      - /workspace/node_modules
+      - /workspace/packages/control-panel/node_modules
+      - ./.dev-certs:/workspace/packages/control-panel/ssl
+    working_dir: /workspace/packages/control-panel
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3000
+    depends_on:
+      - system-service
+    command: sh -c "npm install && npm run dev"
+      
+  system-service:
+    build:
+      context: .
+      dockerfile: packages/system-service/Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/workspace
+      - /workspace/node_modules
+      - /workspace/packages/system-service/node_modules
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /workspace/packages/system-service
+    privileged: true
+    environment:
+      - NODE_ENV=development
+      - CORS_ORIGIN=https://localhost:8443
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+    command: sh -c "npm install && npm run dev"

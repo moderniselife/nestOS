@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build outputs
+dist/
+build/
+*.iso
+*.img
+
+# Development
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage/
+
+# Turbo
+.turbo
+
+# Package specific
+packages/*/dist/
+packages/*/build/
+packages/*/.turbo/
+packages/*/.cache/
+packages/*/node_modules/
+
+# ISO builder specific
+packages/iso-builder/build/
+packages/iso-builder/iso/
+packages/iso-builder/usb/
+packages/iso-builder/chroot/
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.cert
+*.csr

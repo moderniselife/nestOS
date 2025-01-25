@@ -1,0 +1,25 @@
+{
+  "name": "nasos",
+  "version": "0.1.0",
+  "description": "Network Attached Storage Operating System - A modern Debian-based NAS OS",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:control-panel\" \"npm run dev:system-service\"",
+    "dev:control-panel": "cd packages/control-panel && npm run dev",
+    "dev:system-service": "cd packages/system-service && npm run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean",
+    "docker:dev": "docker-compose up",
+    "docker:build": "docker-compose build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "turbo": "^1.11.3",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,31 @@
+[Unit]
+Description=NASOS Control Panel
+After=network.target nasos-system.service
+Requires=nasos-system.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/nasos/control-panel
+ExecStart=/usr/bin/node /usr/local/bin/serve -s . -l 8443 --ssl-cert /etc/nasos/ssl/certificate.crt --ssl-key /etc/nasos/ssl/private.key
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+
+# Resource limits
+CPUQuota=50%
+MemoryLimit=256M
+
+[Install]
+WantedBy=multi-user.target

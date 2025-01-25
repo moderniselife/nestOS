@@ -1,0 +1,27 @@
+# Use Node.js as base image
+FROM node:20-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package.json .
+COPY packages/control-panel/package.json ./
+COPY turbo.json .
+
+# Install dependencies
+RUN npm install
+
+# Copy source code
+COPY packages/control-panel .
+
+# Expose port
+EXPOSE 8443
+
+# Start development server
+CMD ["npm", "run", "dev"]

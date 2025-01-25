@@ -1,0 +1,48 @@
+{
+  "data-root": "/var/lib/docker",
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "3"
+  },
+  "storage-driver": "overlay2",
+  "storage-opts": [
+    "overlay2.override_kernel_check=true"
+  ],
+  "dns": ["1.1.1.1", "8.8.8.8"],
+  "dns-opts": ["ndots:0"],
+  "default-address-pools": [
+    {
+      "base": "172.17.0.0/16",
+      "size": 24
+    },
+    {
+      "base": "172.18.0.0/16",
+      "size": 24
+    }
+  ],
+  "live-restore": true,
+  "userland-proxy": false,
+  "no-new-privileges": true,
+  "selinux-enabled": true,
+  "experimental": false,
+  "metrics-addr": "127.0.0.1:9323",
+  "features": {
+    "buildkit": true
+  },
+  "default-runtime": "runc",
+  "runtimes": {
+    "runc": {
+      "path": "runc"
+    }
+  },
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "registry-mirrors": [],
+  "insecure-registries": [],
+  "debug": false,
+  "hosts": ["unix:///var/run/docker.sock"],
+  "tls": false,
+  "max-concurrent-downloads": 3,
+  "max-concurrent-uploads": 5,
+  "shutdown-timeout": 15
+}

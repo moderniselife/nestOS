@@ -1,0 +1,13 @@
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# Primary network interface - will be configured via the control panel
+auto eth0
+iface eth0 inet dhcp
+
+# Additional interfaces can be configured through the NASOS control panel
+# The control panel will manage the network configuration in /etc/network/interfaces.d/
+
+# Include interface configurations from interfaces.d
+source /etc/network/interfaces.d/*

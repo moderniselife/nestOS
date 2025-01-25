@@ -259,61 +259,43 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
 
         // Helper function to parse dd output
         const parseSpeed = (output: string): number => {
-          console.log('Parsing output:', output);
+          console.log('Raw output:', output);
 
-          // Match the exact macOS dd format: (XXXXXX bytes/sec)
+          // Try to match bytes/sec from parentheses
           const bytesPerSecMatch = output.match(/\((\d+)\s+bytes\/sec\)/);
           if (bytesPerSecMatch) {
             const bytesPerSec = parseInt(bytesPerSecMatch[1], 10);
             const gbPerSec = bytesPerSec / (1024 * 1024 * 1024);
-            console.log('Parsed speed:', {
-              bytesPerSec,
-              gbPerSec
-            });
+            console.log('Parsed speed from bytes/sec:', { bytesPerSec, gbPerSec });
             return gbPerSec;
           }
 
-          // Try alternate format with bytes transferred and time
+          // Try to match bytes and time
           const bytesMatch = output.match(/(\d+)\s+bytes\s+transferred\s+in\s+([\d.]+)\s+secs/);
           if (bytesMatch) {
             const bytes = parseInt(bytesMatch[1], 10);
             const seconds = parseFloat(bytesMatch[2]);
             const gbPerSec = (bytes / (1024 * 1024 * 1024)) / seconds;
-            console.log('Parsed speed (alternate):', {
-              bytes,
-              seconds,
-              gbPerSec
-            });
+            console.log('Parsed speed from bytes and time:', { bytes, seconds, gbPerSec });
             return gbPerSec;
           }
 
-          // Log the output if no match found
-          console.log('Could not parse speed from output:', output);
+          console.log('Could not parse speed from output');
           return 0;
         };
 
-        // Create test file
-        await execAsync('dd if=/dev/zero of=/tmp/testfile bs=128m count=8');
-
-        // Helper function to run dd command and get output
-        const runDdTest = async (command: string): Promise<string> => {
+        // Helper function to run dd command
+        const runDdTest = async (cmd: string): Promise<string> => {
           try {
-            const { stdout, stderr } = await execAsync(`/bin/dd ${command}`);
-            const output = stderr || stdout;
-            console.log('DD command output:', output);
-            return output;
+            const { stdout, stderr } = await execAsync(`/bin/dd ${cmd} 2>&1`);
+            return stderr || stdout;
           } catch (error: any) {
-            // On macOS, dd might exit with status 1 but still work
-            if (error.stderr) {
-              console.log('DD command error output:', error.stderr);
-              return error.stderr;
-            }
-            throw error;
+            // On macOS, dd outputs to stderr even on success
+            return error.stderr || error.stdout || '';
           }
         };
 
         // Create test file
-        console.log('Creating test file...');
         await runDdTest('if=/dev/zero of=/tmp/testfile bs=1m count=1024');
 
         // Run write tests
@@ -348,7 +330,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
           iopsResults.push(iops);
         }
 
-        // Calculate averages
+        // Calculate average speeds
         const writeSpeed = writeResults.reduce((a, b) => a + b, 0) / writeResults.length;
         const readSpeed = readResults.reduce((a, b) => a + b, 0) / readResults.length;
         const iops = Math.round(iopsResults.reduce((a, b) => a + b, 0) / iopsResults.length);

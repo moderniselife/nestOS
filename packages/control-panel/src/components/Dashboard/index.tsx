@@ -49,7 +49,7 @@ const AnimatedButton = styled(Button)(({ theme }) => ({
   backgroundColor: '#000',
   color: 'rgba(255, 255, 255, 0.95)',
   borderRadius: '8px',
-  padding: '12px 24px',
+  padding: '8px 16px',
   overflow: 'hidden',
   transition: 'all 0.3s ease',
   textTransform: 'none',
@@ -319,29 +319,80 @@ export default function Dashboard() {
             <Typography variant="h6" gutterBottom>
               Quick Actions
             </Typography>
-            <Stack direction="row" spacing={3} sx={{ mt: 1 }}>
-              <AnimatedButton
-                startIcon={<UpdateIcon />}
-                onClick={() => updateMutation.mutate()}
-                sx={{ flex: 1 }}
-              >
-                Update System
-              </AnimatedButton>
-              <AnimatedButton
-                startIcon={<RebootIcon />}
-                onClick={() => rebootMutation.mutate()}
-                sx={{ flex: 1 }}
-              >
-                Reboot
-              </AnimatedButton>
-              <AnimatedButton
-                startIcon={<PowerIcon />}
-                onClick={() => shutdownMutation.mutate()}
-                sx={{ flex: 1 }}
-              >
-                Shutdown
-              </AnimatedButton>
-            </Stack>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12} sm={6} md={3}>
+                <AnimatedButton
+                  startIcon={<UpdateIcon />}
+                  onClick={() => updateMutation.mutate()}
+                  fullWidth
+                >
+                  Update System
+                </AnimatedButton>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <AnimatedButton
+                  startIcon={<RebootIcon />}
+                  onClick={() => rebootMutation.mutate()}
+                  fullWidth
+                >
+                  Reboot
+                </AnimatedButton>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <AnimatedButton
+                  startIcon={<PowerIcon />}
+                  onClick={() => shutdownMutation.mutate()}
+                  fullWidth
+                >
+                  Shutdown
+                </AnimatedButton>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <AnimatedButton
+                  startIcon={<DockerIcon />}
+                  onClick={() => {/* TODO: Implement */}}
+                  fullWidth
+                >
+                  Docker Stats
+                </AnimatedButton>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <AnimatedButton
+                  startIcon={<NetworkIcon />}
+                  onClick={() => {/* TODO: Implement */}}
+                  fullWidth
+                >
+                  Network Test
+                </AnimatedButton>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <AnimatedButton
+                  startIcon={<DiskIcon />}
+                  onClick={() => {/* TODO: Implement */}}
+                  fullWidth
+                >
+                  Storage Health
+                </AnimatedButton>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <AnimatedButton
+                  startIcon={<SpeedIcon />}
+                  onClick={() => {/* TODO: Implement */}}
+                  fullWidth
+                >
+                  Performance Test
+                </AnimatedButton>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <AnimatedButton
+                  startIcon={<BuildIcon />}
+                  onClick={() => {/* TODO: Implement */}}
+                  fullWidth
+                >
+                  System Logs
+                </AnimatedButton>
+              </Grid>
+            </Grid>
           </Paper>
         </Grid>
 

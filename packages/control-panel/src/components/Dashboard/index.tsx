@@ -32,7 +32,22 @@ import {
   NetworkCheck as NetworkIcon,
   Memory as ChipIcon,
   Build as BuildIcon,
+  ViewCompact as ViewCompactIcon,
 } from '@mui/icons-material';
+import { useState } from 'react';
+
+function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]> {
+  const groups: Record<string, StorageDevice[]> = {};
+  devices.forEach(device => {
+    // Extract the base device name (e.g., '/dev/disk0' from '/dev/disk0s1')
+    const baseName = device.name.replace(/[sp][0-9]+$/, '');
+    if (!groups[baseName]) {
+      groups[baseName] = [];
+    }
+    groups[baseName].push(device);
+  });
+  return groups;
+}
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiUrl } from '../../App';
 
@@ -135,6 +150,9 @@ export default function Dashboard() {
     },
     refetchInterval: 2000,
   });
+
+  const [showSystemPartitions, setShowSystemPartitions] = useState(false);
+  const [compactView, setCompactView] = useState(true);
 
   const rebootMutation = useMutation({
     mutationFn: async () => {
@@ -355,48 +373,90 @@ export default function Dashboard() {
               <Stack direction="row" spacing={2} alignItems="center" mb={2}>
                 <DiskIcon color="primary" />
                 <Typography variant="h6">Storage</Typography>
+                <Box sx={{ flexGrow: 1 }} />
+                <Tooltip title="Show System Partitions">
+                  <IconButton
+                    size="small"
+                    onClick={() => setShowSystemPartitions(!showSystemPartitions)}
+                    color={showSystemPartitions ? "primary" : "default"}
+                  >
+                    <BuildIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Compact View">
+                  <IconButton
+                    size="small"
+                    onClick={() => setCompactView(!compactView)}
+                    color={compactView ? "primary" : "default"}
+                  >
+                    <ViewCompactIcon />
+                  </IconButton>
+                </Tooltip>
               </Stack>
               {!storageInfo?.devices || storageInfo.devices.length === 0 ? (
                 <Typography color="text.secondary">No storage devices found</Typography>
               ) : (
-                <Grid container spacing={2}>
-                  {storageInfo.devices.map((device: StorageDevice) => (
-                    <Grid item xs={12} md={6} key={device.name}>
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2">
-                          {device.name} ({device.physical})
-                          {device.model && ` - ${device.model}`}
+                <Box>
+                  {Object.entries(groupDevices(storageInfo.devices)).map(([diskName, devices]) => (
+                    <Box key={diskName} sx={{ mb: 3 }}>
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                          {devices[0].model || diskName}
                         </Typography>
-                        {device.filesystem ? (
-                          <>
-                            <LinearProgress
-                              variant="determinate"
-                              value={device.filesystem.use || 0}
-                              sx={{ height: 8, borderRadius: 4, mt: 1 }}
-                            />
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                              {formatBytes(device.filesystem.used)} / {formatBytes(device.filesystem.size)}
-                            </Typography>
-                          </>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            {formatBytes(device.size)} Total
-                            {device.fsType && ` • ${device.fsType}`}
-                            {device.mount && ` • Mounted at ${device.mount}`}
-                          </Typography>
-                        )}
-                        {device.smart && (
+                        {devices[0].smart && (
                           <Chip
                             size="small"
-                            sx={{ mt: 1 }}
-                            label={device.smart.health}
-                            color={device.smart.health === 'PASSED' ? 'success' : 'error'}
+                            sx={{ ml: 1 }}
+                            label={devices[0].smart.health}
+                            color={devices[0].smart.health === 'PASSED' ? 'success' : 'error'}
                           />
                         )}
                       </Box>
-                    </Grid>
+                      <Grid container spacing={2}>
+                        {devices
+                          .filter(device => showSystemPartitions || (!device.name.includes('boot') && !device.name.includes('efi')))
+                          .map((device: StorageDevice) => (
+                            <Grid item xs={12} md={compactView ? 6 : 12} key={device.name}>
+                              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                  <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
+                                    {device.name.replace(diskName, '')}
+                                    {device.label && ` (${device.label})`}
+                                  </Typography>
+                                  {device.mount && (
+                                    <Chip
+                                      size="small"
+                                      label={device.mount}
+                                      variant="outlined"
+                                      sx={{ ml: 1 }}
+                                    />
+                                  )}
+                                </Box>
+                                {device.filesystem ? (
+                                  <>
+                                    <LinearProgress
+                                      variant="determinate"
+                                      value={device.filesystem.use || 0}
+                                      sx={{ height: 6, borderRadius: 3, mb: 0.5 }}
+                                    />
+                                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                      {formatBytes(device.filesystem.used)} / {formatBytes(device.filesystem.size)}
+                                      {' • '}{Math.round(device.filesystem.use)}% used
+                                    </Typography>
+                                  </>
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                    {formatBytes(device.size)} Total
+                                    {device.fsType && ` • ${device.fsType}`}
+                                  </Typography>
+                                )}
+                              </Paper>
+                            </Grid>
+                          ))}
+                      </Grid>
+                    </Box>
                   ))}
-                </Grid>
+                </Box>
               )}
             </CardContent>
           </Card>

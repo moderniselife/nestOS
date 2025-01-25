@@ -10,7 +10,7 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  CircularProgress
+  CircularProgress,
 } from '@mui/material';
 import {
   NetworkCheck as NetworkIcon,
@@ -19,9 +19,9 @@ import {
   Add as AddIcon,
   Refresh as RefreshIcon,
   Check as DefaultIcon,
-  Speed as SpeedIcon
+  Speed as SpeedIcon,
 } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { apiUrl } from '../../App';
 
 interface NetworkTest {
@@ -66,8 +66,6 @@ function getConnectionStatusColor(state: string): 'success' | 'error' | 'warning
 }
 
 export default function Network(): JSX.Element {
-  const queryClient = useQueryClient();
-  
   const { data: networkData, isLoading: interfacesLoading } = useQuery({
     queryKey: ['network-info'],
     queryFn: async () => {
@@ -77,21 +75,25 @@ export default function Network(): JSX.Element {
       }
       return response.json();
     },
-    refetchInterval: 5000
+    refetchInterval: 5000,
   });
 
-  const { data: networkTest, isLoading: testLoading, refetch: refetchTest } = useQuery({
+  const {
+    data: networkTest,
+    isLoading: testLoading,
+    refetch: refetchTest,
+  } = useQuery({
     queryKey: ['network-test'],
     queryFn: async () => {
       const response = await fetch(`${apiUrl}/api/network/test`, {
-        method: 'POST'
+        method: 'POST',
       });
       if (!response.ok) {
         throw new Error('Failed to run network test');
       }
       return response.json() as Promise<NetworkTest>;
     },
-    enabled: false // Don't run automatically
+    enabled: false, // Don't run automatically
   });
 
   if (interfacesLoading || testLoading) {
@@ -100,12 +102,7 @@ export default function Network(): JSX.Element {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={3}
-      >
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5">Network Interfaces</Typography>
         <Stack direction="row" spacing={2}>
           <Button
@@ -140,7 +137,9 @@ export default function Network(): JSX.Element {
             </Box>
             <Button
               variant="contained"
-              startIcon={testLoading ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
+              startIcon={
+                testLoading ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />
+              }
               onClick={() => refetchTest()}
               disabled={testLoading}
             >
@@ -154,9 +153,7 @@ export default function Network(): JSX.Element {
                 <Typography variant="subtitle2" color="text.secondary">
                   Ping Test
                 </Typography>
-                <Typography variant="body2">
-                  Host: {networkTest?.ping.host || 'N/A'}
-                </Typography>
+                <Typography variant="body2">Host: {networkTest?.ping.host || 'N/A'}</Typography>
                 <Typography variant="body2">
                   Latency: {networkTest?.ping.latency.toFixed(2) || 'N/A'} ms
                 </Typography>
@@ -215,20 +212,10 @@ export default function Network(): JSX.Element {
                         />
                       )}
                       {iface.internal && (
-                        <Chip
-                          size="small"
-                          label="Internal"
-                          variant="outlined"
-                          sx={{ ml: 1 }}
-                        />
+                        <Chip size="small" label="Internal" variant="outlined" sx={{ ml: 1 }} />
                       )}
                       {iface.virtual && (
-                        <Chip
-                          size="small"
-                          label="Virtual"
-                          variant="outlined"
-                          sx={{ ml: 1 }}
-                        />
+                        <Chip size="small" label="Virtual" variant="outlined" sx={{ ml: 1 }} />
                       )}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
@@ -255,17 +242,13 @@ export default function Network(): JSX.Element {
                       <Typography variant="subtitle2" color="text.secondary">
                         IPv4 Address
                       </Typography>
-                      <Typography variant="body2">
-                        {iface.ip4 || 'Not configured'}
-                      </Typography>
+                      <Typography variant="body2">{iface.ip4 || 'Not configured'}</Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="subtitle2" color="text.secondary">
                         IPv6 Address
                       </Typography>
-                      <Typography variant="body2">
-                        {iface.ip6 || 'Not configured'}
-                      </Typography>
+                      <Typography variant="body2">{iface.ip6 || 'Not configured'}</Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="subtitle2" color="text.secondary">
@@ -279,9 +262,7 @@ export default function Network(): JSX.Element {
                       <Typography variant="subtitle2" color="text.secondary">
                         DHCP
                       </Typography>
-                      <Typography variant="body2">
-                        {iface.dhcp ? 'Enabled' : 'Disabled'}
-                      </Typography>
+                      <Typography variant="body2">{iface.dhcp ? 'Enabled' : 'Disabled'}</Typography>
                     </Grid>
                     {iface.gateway && (
                       <Grid item xs={12}>

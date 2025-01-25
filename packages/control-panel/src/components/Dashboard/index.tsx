@@ -15,7 +15,6 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider,
   Collapse,
   styled,
   Dialog,
@@ -37,7 +36,6 @@ import {
   Speed as SpeedIcon,
   Check as CheckIcon,
   Error as ErrorIcon,
-  Warning as WarningIcon,
   NetworkCheck as NetworkIcon,
   Memory as ChipIcon,
   Build as BuildIcon,
@@ -48,7 +46,7 @@ import {
   ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
 
-const AnimatedButton = styled(Button)(({ theme }) => ({
+const AnimatedButton = styled(Button)(() => ({
   position: 'relative',
   backgroundColor: '#000',
   color: 'rgba(255, 255, 255, 0.95)',
@@ -89,35 +87,35 @@ const AnimatedButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-function calculateDeviceUsage(devices: StorageDevice[]) {
-  let totalUsed = 0;
-  const mainDevice = devices[0];
-  if (mainDevice.filesystem?.used !== undefined) {
-    console.log('Using main device filesystem:', {
-      name: mainDevice.name,
-      used: mainDevice.filesystem.used,
-      size: mainDevice.size
-    });
-    totalUsed = mainDevice.filesystem.used;
-  } else {
-    const partitions = devices.filter(dev => 
-      dev.type === 'part' && 
-      dev.filesystem?.used !== undefined &&
-      !dev.mount?.includes('boot') && 
-      !dev.mount?.includes('efi')
-    );
-    console.log('Using partitions:', partitions.map(p => ({
-      name: p.name,
-      mount: p.mount,
-      used: p.filesystem?.used,
-      size: p.size
-    })));
-    totalUsed = partitions.reduce((acc, dev) => 
-      acc + dev.filesystem!.used, 0
-    );
-  }
-  return { totalUsed, totalSize: mainDevice.size, usagePercent: Math.round((totalUsed / mainDevice.size) * 100) };
-}
+// function calculateDeviceUsage(devices: StorageDevice[]) {
+//   let totalUsed = 0;
+//   const mainDevice = devices[0];
+//   if (mainDevice.filesystem?.used !== undefined) {
+//     console.log('Using main device filesystem:', {
+//       name: mainDevice.name,
+//       used: mainDevice.filesystem.used,
+//       size: mainDevice.size
+//     });
+//     totalUsed = mainDevice.filesystem.used;
+//   } else {
+//     const partitions = devices.filter(dev => 
+//       dev.type === 'part' && 
+//       dev.filesystem?.used !== undefined &&
+//       !dev.mount?.includes('boot') && 
+//       !dev.mount?.includes('efi')
+//     );
+//     console.log('Using partitions:', partitions.map(p => ({
+//       name: p.name,
+//       mount: p.mount,
+//       used: p.filesystem?.used,
+//       size: p.size
+//     })));
+//     totalUsed = partitions.reduce((acc, dev) => 
+//       acc + dev.filesystem!.used, 0
+//     );
+//   }
+//   return { totalUsed, totalSize: mainDevice.size, usagePercent: Math.round((totalUsed / mainDevice.size) * 100) };
+// }
 
 function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]> {
   const groups: Record<string, StorageDevice[]> = {};
@@ -228,19 +226,19 @@ interface StorageHealthDevice {
   issues: string[];
 }
 
-interface DockerStat {
-  name: string;
-  cpu: string;
-  memory: string;
-  network: string;
-  disk: string;
-}
+// interface DockerStat {
+//   name: string;
+//   cpu: string;
+//   memory: string;
+//   network: string;
+//   disk: string;
+// }
 
-interface Service {
-  name: string;
-  running: boolean;
-  startmode: string;
-}
+// interface Service {
+//   name: string;
+//   running: boolean;
+//   startmode: string;
+// }
 
 interface SystemService {
   name: string;

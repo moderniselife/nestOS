@@ -12,7 +12,6 @@ import {
 } from '@mui/material';
 import {
   Storage as StorageIcon,
-  Memory as SystemIcon,
   Cloud as DockerIcon,
   NetworkCheck as NetworkIcon,
   Settings as SettingsIcon,

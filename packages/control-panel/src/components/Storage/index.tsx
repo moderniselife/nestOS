@@ -128,6 +128,7 @@ export default function Storage(): JSX.Element {
         const response = await fetch(`${apiUrl}/api/storage/volumes`);
         if (!response.ok) {
           // If we get a 500 error, return empty arrays
+          console.error('Failed to fetch volumes:', response.status, volumeLoading);
           if (response.status === 500) {
             return { raids: [], mounts: [] };
           }
@@ -181,7 +182,7 @@ export default function Storage(): JSX.Element {
   }
 
   const raids = volumeData?.raids || [];
-  const mounts = volumeData?.mounts || [];
+  // const mounts = volumeData?.mounts || []; // @todo: unused
 
   return (
     <Box sx={{ flexGrow: 1 }}>

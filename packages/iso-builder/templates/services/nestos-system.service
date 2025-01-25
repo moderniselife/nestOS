@@ -1,12 +1,12 @@
 [Unit]
-Description=NASOS System Service
+Description=NestOS System Service
 After=network.target docker.service
 Requires=docker.service
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/nasos/system-service
+WorkingDirectory=/opt/nestos/system-service
 ExecStart=/usr/bin/node dist/index.js
 Restart=always
 RestartSec=10

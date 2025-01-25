@@ -6,7 +6,7 @@ iface lo inet loopback
 auto eth0
 iface eth0 inet dhcp
 
-# Additional interfaces can be configured through the NASOS control panel
+# Additional interfaces can be configured through the NestOS control panel
 # The control panel will manage the network configuration in /etc/network/interfaces.d/
 
 # Include interface configurations from interfaces.d

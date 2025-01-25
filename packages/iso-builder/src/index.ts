@@ -17,20 +17,20 @@ const pkg = JSON.parse(
 const program = new Command();
 
 program
-  .name('nasos-builder')
-  .description('NASOS ISO and USB image builder')
+  .name('nestos-builder')
+  .description('NestOS ISO and USB image builder')
   .version(pkg.version);
 
 program
   .command('iso')
-  .description('Build NASOS ISO image')
+  .description('Build NestOS ISO image')
   .option('-o, --output <path>', 'Output path for the ISO file')
   .action(async (options) => {
     try {
       console.log(chalk.blue('Starting ISO build process...'));
       await buildIso();
       if (options.output) {
-        const defaultPath = path.join(__dirname, '../build/nasos.iso');
+        const defaultPath = path.join(__dirname, '../build/nestos.iso');
         await fs.copy(defaultPath, options.output);
         console.log(chalk.green(`ISO image copied to: ${options.output}`));
       }
@@ -44,7 +44,7 @@ program
   .command('usb')
   .description('Create bootable USB drive')
   .requiredOption('-d, --device <path>', 'USB device path (e.g., /dev/sdb)')
-  .option('-l, --label <name>', 'USB drive label', 'NASOS')
+  .option('-l, --label <name>', 'USB drive label', 'NestOS')
   .option('-p, --persistence', 'Enable persistence', false)
   .option('-s, --persistence-size <size>', 'Persistence partition size in GB', '4')
   .action(async (options) => {
@@ -77,11 +77,11 @@ program
 // Add some examples
 program.addHelpText('after', `
 Examples:
-  $ nasos-builder iso                           # Build ISO image
-  $ nasos-builder iso -o /path/to/nasos.iso     # Build ISO and save to specific location
-  $ nasos-builder usb -d /dev/sdb               # Create bootable USB
-  $ nasos-builder usb -d /dev/sdb -p            # Create bootable USB with persistence
-  $ nasos-builder clean                         # Clean build artifacts
+  $ nestos-builder iso                           # Build ISO image
+  $ nestos-builder iso -o /path/to/nestos.iso     # Build ISO and save to specific location
+  $ nestos-builder usb -d /dev/sdb               # Create bootable USB
+  $ nestos-builder usb -d /dev/sdb -p            # Create bootable USB with persistence
+  $ nestos-builder clean                         # Clean build artifacts
 `);
 
 // Parse command line arguments

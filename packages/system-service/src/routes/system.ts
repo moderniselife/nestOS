@@ -81,7 +81,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
   // Get system information
   fastify.get('/info', async (request) => {
     const { detailed } = systemInfoSchema.parse(request.query);
-    
+
     const [cpu, mem, os, system] = await Promise.all([
       si.cpu(),
       si.mem(),
@@ -205,12 +205,12 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
           const buffer = Buffer.alloc(size);
           const iterations = 10;
           const startTime = process.hrtime.bigint();
-          
+
           for (let i = 0; i < iterations; i++) {
             const newBuffer = Buffer.alloc(size);
             buffer.copy(newBuffer);
           }
-          
+
           const endTime = process.hrtime.bigint();
           const duration = Number(endTime - startTime) / 1e9; // seconds
           const throughput = (size * iterations) / (1024 * 1024 * duration); // MB/s
@@ -221,12 +221,12 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
           const size = 1024 * 1024 * 100; // 100MB
           const iterations = 10;
           const startTime = process.hrtime.bigint();
-          
+
           for (let i = 0; i < iterations; i++) {
             const buffer = Buffer.alloc(size);
             buffer.fill(Math.random());
           }
-          
+
           const endTime = process.hrtime.bigint();
           const duration = Number(endTime - startTime) / 1e9; // seconds
           const throughput = (size * iterations) / (1024 * 1024 * duration); // MB/s
@@ -399,13 +399,13 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       // Get current version
       const { stdout: currentHash } = await execAsync('git rev-parse HEAD');
-      
+
       // Fetch latest updates
       await execAsync('git fetch origin main');
-      
+
       // Get latest version
       const { stdout: latestHash } = await execAsync('git rev-parse origin/main');
-      
+
       // Get commit details if there's an update
       let updateDetails = null;
       if (currentHash.trim() !== latestHash.trim()) {
@@ -432,11 +432,11 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       // Pull latest changes
       await execAsync('git pull origin main');
-      
+
       // Rebuild and restart services
       await execAsync('npm run build');
-      await execAsync('systemctl restart nasos-system nasos-control-panel');
-      
+      await execAsync('systemctl restart nestos-system nestos-control-panel');
+
       return {
         status: 'updated',
         message: 'System updated successfully'
@@ -459,7 +459,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         const { stdout } = await execAsync('crontab -l');
         const hourlyMatch = stdout.match(/0 \* \* \* \* cd .* && git pull/);
         const dailyMatch = stdout.match(/0 0 \* \* \* cd .* && git pull/);
-        
+
         if (hourlyMatch || dailyMatch) {
           settings.autoUpdate = true;
           settings.schedule = hourlyMatch ? 'hourly' : 'daily';
@@ -477,7 +477,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
   // Update settings
   fastify.post('/updates/settings', async (request) => {
     const body = updateSettingsSchema.parse(request.body);
-    
+
     try {
       // Read existing crontab
       let currentCrontab = '';
@@ -498,7 +498,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         // Add new auto-update entry based on schedule
         const schedule = body.schedule || 'hourly';
         const cronExpression = schedule === 'hourly' ? '0 * * * *' : '0 0 * * *';
-        currentCrontab += `\n${cronExpression} cd ${process.cwd()} && git pull origin main && npm run build && systemctl restart nasos-system nasos-control-panel`;
+        currentCrontab += `\n${cronExpression} cd ${process.cwd()} && git pull origin main && npm run build && systemctl restart nestos-system nestos-control-panel`;
       }
 
       // Write new crontab

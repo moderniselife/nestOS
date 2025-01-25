@@ -1,10 +1,10 @@
 {
-  "name": "@nasos/iso-builder",
+  "name": "@nestos/iso-builder",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "nasos-builder": "./dist/index.js"
+    "nestos-builder": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",

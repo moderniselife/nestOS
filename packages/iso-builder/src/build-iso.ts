@@ -54,7 +54,7 @@ async function configureSystem() {
     // Configure hostname
     await fs.writeFile(
       path.join(CHROOT_DIR, 'etc/hostname'),
-      'nasos'
+      'nestos'
     );
 
     // Configure network interfaces
@@ -114,19 +114,19 @@ async function installPackages() {
   }
 }
 
-async function installNASOSComponents() {
-  const spinner = ora('Installing NASOS components').start();
+async function installNestOSComponents() {
+  const spinner = ora('Installing NestOS components').start();
   try {
     // Copy built system service
     await fs.copy(
       path.join(__dirname, '../../system-service/dist'),
-      path.join(CHROOT_DIR, 'opt/nasos/system-service')
+      path.join(CHROOT_DIR, 'opt/nestos/system-service')
     );
 
     // Copy built control panel
     await fs.copy(
       path.join(__dirname, '../../control-panel/dist'),
-      path.join(CHROOT_DIR, 'opt/nasos/control-panel')
+      path.join(CHROOT_DIR, 'opt/nestos/control-panel')
     );
 
     // Copy systemd service files
@@ -139,13 +139,13 @@ async function installNASOSComponents() {
     await execa('chroot', [
       CHROOT_DIR,
       'systemctl', 'enable',
-      'nasos-system.service',
-      'nasos-control-panel.service'
+      'nestos-system.service',
+      'nestos-control-panel.service'
     ]);
 
-    spinner.succeed('NASOS components installed');
+    spinner.succeed('NestOS components installed');
   } catch (error) {
-    spinner.fail(`Failed to install NASOS components: ${error}`);
+    spinner.fail(`Failed to install NestOS components: ${error}`);
     throw error;
   }
 }
@@ -161,7 +161,7 @@ async function createISO() {
 
     // Install GRUB
     await execa('grub-mkrescue', [
-      '-o', path.join(BUILD_DIR, 'nasos.iso'),
+      '-o', path.join(BUILD_DIR, 'nestos.iso'),
       ISO_DIR
     ]);
 
@@ -173,18 +173,18 @@ async function createISO() {
 }
 
 export async function buildIso() {
-  console.log(chalk.blue('Starting NASOS ISO build process...'));
+  console.log(chalk.blue('Starting NestOS ISO build process...'));
 
   try {
     await setupBuildEnvironment();
     await downloadBaseSystem();
     await configureSystem();
     await installPackages();
-    await installNASOSComponents();
+    await installNestOSComponents();
     await createISO();
 
     console.log(chalk.green('\nBuild completed successfully!'));
-    console.log(chalk.white(`ISO image available at: ${path.join(BUILD_DIR, 'nasos.iso')}`));
+    console.log(chalk.white(`ISO image available at: ${path.join(BUILD_DIR, 'nestos.iso')}`));
   } catch (error) {
     console.error(chalk.red('\nBuild failed:'), error);
     process.exit(1);

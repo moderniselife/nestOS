@@ -5,20 +5,20 @@
 # /srv/nfs4        gss/krb5i(rw,sync,fsid=0,crossmnt,no_subtree_check)
 # /srv/nfs4/homes  gss/krb5i(rw,sync,no_subtree_check)
 #
-# NASOS NFS Configuration
+# NestOS NFS Configuration
 # 
-# Default options used by NASOS:
+# Default options used by NestOS:
 # - rw: Allow both read and write requests
 # - sync: Reply to requests only after the changes have been committed to stable storage
 # - no_subtree_check: Disable subtree checking
 # - no_root_squash: Allow root users on NFS clients to access as root
 # - secure: Require requests to originate from ports less than 1024
 #
-# Additional shares will be configured through the NASOS control panel
+# Additional shares will be configured through the NestOS control panel
 # Share configurations will be added below this line
 
 # Example share (commented out):
 # /mnt/storage/public 192.168.1.0/24(rw,sync,no_subtree_check,all_squash)
 
 # Include dynamically managed exports
-# NASOS Control Panel will manage files in the exports.d directory
+# NestOS Control Panel will manage files in the exports.d directory

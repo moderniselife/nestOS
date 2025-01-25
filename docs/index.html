@@ -170,6 +170,65 @@
             left: 100%;
         }
 
+        .screenshots {
+            padding: 100px 0;
+            background-color: var(--bg-paper);
+            position: relative;
+        }
+
+        .screenshots h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 50px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .screenshot-item {
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp 0.8s ease-out forwards;
+        }
+
+        .screenshot-item:nth-child(1) { animation-delay: 0.2s; }
+        .screenshot-item:nth-child(2) { animation-delay: 0.4s; }
+        .screenshot-item:nth-child(3) { animation-delay: 0.6s; }
+        .screenshot-item:nth-child(4) { animation-delay: 0.8s; }
+        .screenshot-item:nth-child(5) { animation-delay: 1.0s; }
+
+        .screenshot-item img {
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .screenshot-item img:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(255, 112, 67, 0.2);
+        }
+
+        .screenshot-item h3 {
+            margin: 20px 0 10px;
+            color: var(--primary);
+            font-size: 1.4rem;
+        }
+
+        .screenshot-item p {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 30px;
+        }
+
         .features {
             padding: 100px 0;
             position: relative;
@@ -334,6 +393,39 @@
                     stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 5v14M19 12l-7 7-7-7" />
                 </svg>
+            </div>
+        </section>
+
+        <section class="screenshots">
+            <div class="container">
+                <h2>Interface Preview</h2>
+                <div class="screenshot-grid">
+                    <div class="screenshot-item">
+                        <img src="assets/screenshots/dashboard.png" alt="Dashboard Interface">
+                        <h3>Dashboard</h3>
+                        <p>Real-time system monitoring and overview</p>
+                    </div>
+                    <div class="screenshot-item">
+                        <img src="assets/screenshots/docker.png" alt="Docker Management">
+                        <h3>Docker Management</h3>
+                        <p>Container management and orchestration</p>
+                    </div>
+                    <div class="screenshot-item">
+                        <img src="assets/screenshots/network.png" alt="Network Configuration">
+                        <h3>Network Configuration</h3>
+                        <p>Network interfaces and services management</p>
+                    </div>
+                    <div class="screenshot-item">
+                        <img src="assets/screenshots/storage.png" alt="Storage Management">
+                        <h3>Storage Management</h3>
+                        <p>Disk management and volume control</p>
+                    </div>
+                    <div class="screenshot-item">
+                        <img src="assets/screenshots/settings.png" alt="System Settings">
+                        <h3>System Settings</h3>
+                        <p>System configuration and preferences</p>
+                    </div>
+                </div>
             </div>
         </section>
 

@@ -15,6 +15,32 @@ NestOS is designed to make home server management simple and beautiful. It provi
 - 🔄 Live system updates
 - 📱 Mobile-responsive interface
 
+## 📸 Screenshots
+
+<div align="center">
+
+### Dashboard
+![Dashboard](docs/assets/screenshots/dashboard.png)
+*Real-time system monitoring and overview*
+
+### Docker Management
+![Docker](docs/assets/screenshots/docker.png)
+*Container management and orchestration*
+
+### Network Configuration
+![Network](docs/assets/screenshots/network.png)
+*Network interfaces and services management*
+
+### Storage Management
+![Storage](docs/assets/screenshots/storage.png)
+*Disk management and volume control*
+
+### System Settings
+![Settings](docs/assets/screenshots/settings.png)
+*System configuration and preferences*
+
+</div>
+
 ## 🚧 Development Status
 
 > ⚠️ **Active Development**: NestOS is currently under heavy development and is not ready for production use. Features and APIs may change significantly.

@@ -20,6 +20,7 @@
     "docker:build": "docker-compose build"
   },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
     "concurrently": "^9.1.2",
     "eslint-plugin-react": "^7.37.4",
     "turbo": "^2.3.4",

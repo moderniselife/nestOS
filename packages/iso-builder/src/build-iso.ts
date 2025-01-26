@@ -208,33 +208,43 @@ async function installPackages() {
 async function installNestOSComponents() {
   const spinner = ora('Installing NestOS components').start();
   try {
-    // Copy built system service
-    await fs.copy(
-      path.join(__dirname, '../../system-service/dist'),
-      path.join(CHROOT_DIR, 'opt/nestos/system-service')
-    );
+    // Create base directories
+    await fs.ensureDir(path.join(CHROOT_DIR, 'opt/nestos/system-service'));
+    await fs.ensureDir(path.join(CHROOT_DIR, 'opt/nestos/control-panel'));
 
-    // Copy built control panel
-    await fs.copy(
-      path.join(__dirname, '../../control-panel/dist'),
-      path.join(CHROOT_DIR, 'opt/nestos/control-panel')
-    );
+    // Try to copy components if they exist
+    const systemServicePath = path.join(__dirname, '../../system-service/dist');
+    const controlPanelPath = path.join(__dirname, '../../control-panel/dist');
 
-    // Copy systemd service files
-    await fs.copy(
-      path.join(__dirname, '../templates/services'),
-      path.join(CHROOT_DIR, 'etc/systemd/system')
-    );
+    if (await fs.pathExists(systemServicePath)) {
+      await fs.copy(systemServicePath, path.join(CHROOT_DIR, 'opt/nestos/system-service'));
+    } else {
+      console.warn('Warning: system-service not found, skipping...');
+    }
 
-    // Enable services
-    await execa('chroot', [
-      CHROOT_DIR,
-      'systemctl', 'enable',
-      'nestos-system.service',
-      'nestos-control-panel.service'
-    ]);
+    if (await fs.pathExists(controlPanelPath)) {
+      await fs.copy(controlPanelPath, path.join(CHROOT_DIR, 'opt/nestos/control-panel'));
+    } else {
+      console.warn('Warning: control-panel not found, skipping...');
+    }
 
-    spinner.succeed('NestOS components installed');
+    // Copy systemd service files if they exist
+    const servicesPath = path.join(__dirname, '../templates/services');
+    if (await fs.pathExists(servicesPath)) {
+      await fs.copy(servicesPath, path.join(CHROOT_DIR, 'etc/systemd/system'));
+      
+      // Enable services only if we copied them
+      await execa('chroot', [
+        CHROOT_DIR,
+        'systemctl', 'enable',
+        'nestos-system.service',
+        'nestos-control-panel.service'
+      ]);
+    } else {
+      console.warn('Warning: service templates not found, skipping...');
+    }
+
+    spinner.succeed('NestOS components installed (with warnings)');
   } catch (error) {
     spinner.fail(`Failed to install NestOS components: ${error instanceof Error ? error.message : 'Unknown error'}`);
     console.error('Full error:', error);

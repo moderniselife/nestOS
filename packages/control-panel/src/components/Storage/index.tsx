@@ -74,6 +74,15 @@ interface Volume {
   filesystem?: string;
 }
 
+interface NBD {
+  name: string;
+  device: string;
+  host: string;
+  port: number;
+  size: number;
+  connected: boolean;
+}
+
 function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   if (bytes === 0) {
@@ -127,17 +136,14 @@ export default function Storage(): JSX.Element {
       try {
         const response = await fetch(`${apiUrl}/api/storage/volumes`);
         if (!response.ok) {
-          // If we get a 500 error, return empty arrays
-          console.error('Failed to fetch volumes:', response.status, volumeLoading);
           if (response.status === 500) {
-            return { raids: [], mounts: [] };
+            return { raids: [], mounts: [], nbds: [] };
           }
           throw new Error('Failed to fetch volumes');
         }
         return response.json();
       } catch (error) {
-        // Return empty arrays on any error
-        return { raids: [], mounts: [] };
+        return { raids: [], mounts: [], nbds: [] };
       }
     },
     refetchInterval: 5000,
@@ -182,7 +188,8 @@ export default function Storage(): JSX.Element {
   }
 
   const raids = volumeData?.raids || [];
-  // const mounts = volumeData?.mounts || []; // @todo: unused
+  const mounts = volumeData?.mounts || [];
+  const nbds = volumeData?.nbds || [];
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -295,7 +302,7 @@ export default function Storage(): JSX.Element {
         ))}
       </Grid>
 
-      {/* Volumes */}
+      {/* Volumes Section */}
       <Typography variant="h6" gutterBottom>
         Volumes
       </Typography>
@@ -304,7 +311,7 @@ export default function Storage(): JSX.Element {
           Volume management is not available in the current environment.
         </Alert>
       ) : (
-        <Grid container spacing={3}>
+        <Grid container spacing={3} mb={4}>
           {raids.map((volume: Volume) => (
             <Grid item xs={12} md={6} key={volume.name}>
               <Card>
@@ -364,6 +371,95 @@ export default function Storage(): JSX.Element {
           ))}
         </Grid>
       )}
+
+      {/* NBD Devices Section */}
+      <Typography variant="h6" gutterBottom>
+        Network Block Devices
+      </Typography>
+      <Grid container spacing={3} mb={4}>
+        {nbds.map((nbd: NBD) => (
+          <Grid item xs={12} md={6} key={nbd.name}>
+            <Card>
+              <CardContent>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <DiskIcon color="primary" />
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6">
+                      {nbd.name}
+                      <Chip
+                        size="small"
+                        label={nbd.connected ? 'Connected' : 'Disconnected'}
+                        color={nbd.connected ? 'success' : 'error'}
+                        sx={{ ml: 1 }}
+                      />
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {nbd.host}:{nbd.port} • {formatBytes(nbd.size)}
+                    </Typography>
+                  </Box>
+                  <IconButton
+                    color="error"
+                    onClick={async () => {
+                      try {
+                        await fetch(`${apiUrl}/api/storage/nbd/${nbd.name}`, {
+                          method: 'DELETE',
+                        });
+                        await queryClient.invalidateQueries({ queryKey: ['storage-volumes'] });
+                      } catch (error) {
+                        console.error('Failed to delete NBD:', error);
+                      }
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Mounts Section */}
+      <Typography variant="h6" gutterBottom>
+        Mounts
+      </Typography>
+      <Grid container spacing={3} mb={4}>
+        {mounts.map((mount: Volume) => (
+          <Grid item xs={12} md={6} key={mount.name}>
+            <Card>
+              <CardContent>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <MountIcon color="primary" />
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6">
+                      {mount.name}
+                      <Chip size="small" label={mount.type} color="primary" sx={{ ml: 1 }} />
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {mount.mountPoint}
+                    </Typography>
+                  </Box>
+                  <IconButton
+                    color="error"
+                    onClick={async () => {
+                      try {
+                        await fetch(`${apiUrl}/api/storage/mounts/${mount.name}`, {
+                          method: 'DELETE',
+                        });
+                        await queryClient.invalidateQueries({ queryKey: ['storage-volumes'] });
+                      } catch (error) {
+                        console.error('Failed to unmount:', error);
+                      }
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
 
       {/* Create Volume Dialog */}
       <Dialog

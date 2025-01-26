@@ -20,6 +20,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { apiUrl } from '../../App';
+import { version } from '../../../../../package.json';
 
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
@@ -78,7 +79,7 @@ export default function Sidebar(): JSX.Element {
               NestOS
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              v0.1.0
+              v{version}
             </Typography>
           </Box>
         </Stack>

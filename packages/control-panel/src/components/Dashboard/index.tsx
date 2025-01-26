@@ -65,7 +65,8 @@ const AnimatedButton = styled(Button)(() => ({
     transform: 'scale(1.02)',
     boxShadow: '0 0 20px rgba(0, 0, 0, 0.3)',
     border: '2px solid transparent',
-    backgroundImage: 'linear-gradient(#000, #000), linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000)',
+    backgroundImage:
+      'linear-gradient(#000, #000), linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000)',
     backgroundOrigin: 'border-box',
     backgroundClip: 'padding-box, border-box',
     backgroundSize: '100% 100%, 400%',
@@ -98,10 +99,10 @@ const AnimatedButton = styled(Button)(() => ({
 //     });
 //     totalUsed = mainDevice.filesystem.used;
 //   } else {
-//     const partitions = devices.filter(dev => 
-//       dev.type === 'part' && 
+//     const partitions = devices.filter(dev =>
+//       dev.type === 'part' &&
 //       dev.filesystem?.used !== undefined &&
-//       !dev.mount?.includes('boot') && 
+//       !dev.mount?.includes('boot') &&
 //       !dev.mount?.includes('efi')
 //     );
 //     console.log('Using partitions:', partitions.map(p => ({
@@ -110,32 +111,168 @@ const AnimatedButton = styled(Button)(() => ({
 //       used: p.filesystem?.used,
 //       size: p.size
 //     })));
-//     totalUsed = partitions.reduce((acc, dev) => 
+//     totalUsed = partitions.reduce((acc, dev) =>
 //       acc + dev.filesystem!.used, 0
 //     );
 //   }
 //   return { totalUsed, totalSize: mainDevice.size, usagePercent: Math.round((totalUsed / mainDevice.size) * 100) };
 // }
 
+// Working for macOS and Linux
+// function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]> {
+//   const groups: Record<string, StorageDevice[]> = {};
+
+//   // First, find all physical disk devices
+//   devices.forEach(device => {
+//     if (device.type === 'disk' && device.physical === 'SSD') {
+//       groups[device.name] = [device];
+//     }
+//   });
+
+//   // Then, add direct partitions to their parent disks
+//   devices.forEach(device => {
+//     if (device.type === 'part' && device.device && groups[device.device]) {
+//       groups[device.device].push(device);
+//     }
+//   });
+
+//   // Filter out empty groups and sort partitions by name
+//   Object.keys(groups).forEach(key => {
+//     if (groups[key].length === 0) {
+//       delete groups[key];
+//     } else {
+//       groups[key].sort((a, b) => a.name.localeCompare(b.name));
+//     }
+//   });
+
+//   return groups;
+// }
+
+// Working for macOS, Linux, and Docker (except docker shows 0B / correct size)
+// function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]> {
+//   const groups: Record<string, StorageDevice[]> = {};
+
+//   // Filter out NBD devices and empty devices
+//   const validDevices = devices.filter(
+//     (device) =>
+//       !device.name.startsWith('nbd') && // Filter out NBD devices
+//       (device.size > 0 || device.filesystem?.size > 0) // Only include devices with actual size
+//   );
+
+//   // First, check for Docker environment
+//   const isDocker = validDevices.some(
+//     (device) =>
+//       device.mount === '/' && (device.fsType === 'overlay' || device.fsType === 'overlay2')
+//   );
+
+//   if (isDocker) {
+//     // For Docker, find the root filesystem and any mounted volumes
+//     const rootDevice = validDevices.find((device) => device.mount === '/');
+//     if (rootDevice) {
+//       groups['docker-root'] = [rootDevice];
+
+//       // Add other mounted volumes
+//       validDevices
+//         .filter(
+//           (device) =>
+//             device !== rootDevice &&
+//             device.filesystem?.size > 0 &&
+//             device.mount &&
+//             !device.mount.includes('/boot')
+//         )
+//         .forEach((device) => {
+//           if (groups['docker-root']) {
+//             groups['docker-root'].push(device);
+//           }
+//         });
+//     }
+//   } else {
+//     // Regular system handling - support all storage types
+//     validDevices.forEach((device) => {
+//       if (device.type === 'disk') {
+//         groups[device.name] = [device];
+//       }
+//     });
+
+//     // Add partitions to their parent disks
+//     validDevices.forEach((device) => {
+//       if (device.type === 'part' && device.device && groups[device.device]) {
+//         groups[device.device].push(device);
+//       }
+//     });
+//   }
+
+//   // Filter out empty groups and sort partitions by name
+//   Object.keys(groups).forEach((key) => {
+//     if (groups[key].length === 0) {
+//       delete groups[key];
+//     } else {
+//       groups[key].sort((a, b) => a.name.localeCompare(b.name));
+//     }
+//   });
+
+//   return groups;
+// }
+
 function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]> {
   const groups: Record<string, StorageDevice[]> = {};
-  
-  // First, find all physical disk devices
-  devices.forEach(device => {
-    if (device.type === 'disk' && device.physical === 'SSD') {
-      groups[device.name] = [device];
-    }
-  });
 
-  // Then, add direct partitions to their parent disks
-  devices.forEach(device => {
-    if (device.type === 'part' && device.device && groups[device.device]) {
-      groups[device.device].push(device);
-    }
-  });
+  // Filter out NBD devices and empty devices
+  const validDevices = devices.filter(
+    (device) =>
+      !device.name.startsWith('nbd') && // Filter out NBD devices
+      (device.size > 0 || device.filesystem?.size > 0) // Only include devices with actual size
+  );
+
+  // First, check for Docker environment
+  const isDocker = validDevices.some(
+    (device) =>
+      device.mount === '/' && (device.fsType === 'overlay' || device.fsType === 'overlay2')
+  );
+
+  if (isDocker) {
+    // Group Docker volumes by their parent device
+    const volumeGroups = new Map<string, StorageDevice[]>();
+
+    validDevices.forEach((device) => {
+      if (device.type === 'disk' || (device.type === 'part' && device.filesystem)) {
+        const parentDevice = device.device?.replace('/dev/', '') || device.name;
+        const groupKey = parentDevice.replace(/[0-9]+$/, ''); // Remove trailing numbers for partitions
+
+        if (!volumeGroups.has(groupKey)) {
+          volumeGroups.set(groupKey, []);
+        }
+        volumeGroups.get(groupKey)?.push(device);
+      }
+    });
+
+    // Convert Map to groups object
+    volumeGroups.forEach((devices, key) => {
+      // Sort devices so disk comes first, then partitions
+      devices.sort((a, b) => {
+        if (a.type === 'disk' && b.type !== 'disk') return -1;
+        if (a.type !== 'disk' && b.type === 'disk') return 1;
+        return a.name.localeCompare(b.name);
+      });
+      groups[key] = devices;
+    });
+  } else {
+    // Regular system handling - support all storage types
+    validDevices.forEach((device) => {
+      if (device.type === 'disk') {
+        groups[device.name] = [device];
+      }
+    });
+
+    validDevices.forEach((device) => {
+      if (device.type === 'part' && device.device && groups[device.device.replace('/dev/', '')]) {
+        groups[device.device.replace('/dev/', '')].push(device);
+      }
+    });
+  }
 
   // Filter out empty groups and sort partitions by name
-  Object.keys(groups).forEach(key => {
+  Object.keys(groups).forEach((key) => {
     if (groups[key].length === 0) {
       delete groups[key];
     } else {
@@ -246,7 +383,6 @@ interface SystemService {
   startmode: string;
 }
 
-
 export default function Dashboard(): JSX.Element {
   const { data: systemInfo, isLoading: systemLoading } = useQuery({
     queryKey: ['system-info'],
@@ -260,6 +396,21 @@ export default function Dashboard(): JSX.Element {
     refetchInterval: 5000,
   });
 
+  // const { data: storageInfo, isLoading: storageLoading } = useQuery<StorageInfo>({
+  //   queryKey: ['storage-info'],
+  //   queryFn: async () => {
+  //     const response = await fetch(`${apiUrl}/api/storage/devices`);
+  //     if (!response.ok) {
+  //       throw new Error('Failed to fetch storage info');
+  //     }
+  //     const data = await response.json();
+  //     console.log('Storage Info:', JSON.stringify(data, null, 2));
+  //     console.log('First device:', JSON.stringify(data.devices[0], null, 2));
+  //     return data;
+  //   },
+  //   refetchInterval: 10000,
+  // });
+  // Inside the storage info query
   const { data: storageInfo, isLoading: storageLoading } = useQuery<StorageInfo>({
     queryKey: ['storage-info'],
     queryFn: async () => {
@@ -269,7 +420,10 @@ export default function Dashboard(): JSX.Element {
       }
       const data = await response.json();
       console.log('Storage Info:', JSON.stringify(data, null, 2));
-      console.log('First device:', JSON.stringify(data.devices[0], null, 2));
+      console.log(
+        'Docker Detection:',
+        data.devices.some((d: StorageDevice) => d.mount === '/' && d.fsType === 'overlay')
+      );
       return data;
     },
     refetchInterval: 10000,
@@ -294,7 +448,7 @@ export default function Dashboard(): JSX.Element {
   const itemsPerPage = 4; // Number of disk groups per page
 
   const toggleDevice = (deviceName: string) => {
-    setExpandedDevices(prev => {
+    setExpandedDevices((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(deviceName)) {
         newSet.delete(deviceName);
@@ -365,14 +519,18 @@ export default function Dashboard(): JSX.Element {
         content: (
           <Stack spacing={2}>
             <Box>
-              <Typography variant="subtitle2" color="text.secondary">Ping Test</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                Ping Test
+              </Typography>
               <Typography>Host: {data.ping.host}</Typography>
               <Typography>Latency: {data.ping.latency.toFixed(2)}ms</Typography>
               <Typography>Packet Loss: {data.ping.packetLoss}%</Typography>
             </Box>
             {data.speedtest && (
               <Box>
-                <Typography variant="subtitle2" color="text.secondary">Speed Test</Typography>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Speed Test
+                </Typography>
                 <Typography>Download: {(data.speedtest.download / 1e6).toFixed(2)} Mbps</Typography>
                 <Typography>Upload: {(data.speedtest.upload / 1e6).toFixed(2)} Mbps</Typography>
                 <Typography>Latency: {data.speedtest.latency}ms</Typography>
@@ -404,7 +562,13 @@ export default function Dashboard(): JSX.Element {
               <Typography>Overall Status:</Typography>
               <Chip
                 label={data.overall}
-                color={data.overall === 'healthy' ? 'success' : data.overall === 'warning' ? 'warning' : 'error'}
+                color={
+                  data.overall === 'healthy'
+                    ? 'success'
+                    : data.overall === 'warning'
+                    ? 'warning'
+                    : 'error'
+                }
                 size="small"
               />
             </Box>
@@ -419,15 +583,25 @@ export default function Dashboard(): JSX.Element {
                           <Typography variant="body2">Status:</Typography>
                           <Chip
                             label={device.status}
-                            color={device.status === 'healthy' ? 'success' : device.status === 'warning' ? 'warning' : 'error'}
+                            color={
+                              device.status === 'healthy'
+                                ? 'success'
+                                : device.status === 'warning'
+                                ? 'warning'
+                                : 'error'
+                            }
                             size="small"
                           />
                         </Box>
                         {device.smart && (
                           <>
-                            <Typography variant="body2">SMART Health: {device.smart.health}</Typography>
+                            <Typography variant="body2">
+                              SMART Health: {device.smart.health}
+                            </Typography>
                             {device.smart.temperature && (
-                              <Typography variant="body2">Temperature: {device.smart.temperature}°C</Typography>
+                              <Typography variant="body2">
+                                Temperature: {device.smart.temperature}°C
+                              </Typography>
                             )}
                           </>
                         )}
@@ -465,19 +639,30 @@ export default function Dashboard(): JSX.Element {
         content: (
           <Stack spacing={3}>
             <Box>
-              <Typography variant="subtitle2" color="text.secondary">CPU Performance</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                CPU Performance
+              </Typography>
               <Typography>Single Core: {data.cpu.singleCore.toFixed(2)}ms</Typography>
               <Typography>Multi Core: {data.cpu.multiCore.toFixed(2)}%</Typography>
-              <Typography>Load Average: {data.cpu.loadAverage.map((load: number) => load.toFixed(2)).join(', ')}</Typography>
+              <Typography>
+                Load Average:{' '}
+                {data.cpu.loadAverage.map((load: number) => load.toFixed(2)).join(', ')}
+              </Typography>
             </Box>
             <Box>
-              <Typography variant="subtitle2" color="text.secondary">Memory Performance</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                Memory Performance
+              </Typography>
               <Typography>Read Speed: {(data.memory.readSpeed / 1024).toFixed(2)} GB/s</Typography>
-              <Typography>Write Speed: {(data.memory.writeSpeed / 1024).toFixed(2)} GB/s</Typography>
+              <Typography>
+                Write Speed: {(data.memory.writeSpeed / 1024).toFixed(2)} GB/s
+              </Typography>
               <Typography>Latency: {data.memory.latency.toFixed(2)}ms</Typography>
             </Box>
             <Box>
-              <Typography variant="subtitle2" color="text.secondary">Disk Performance</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                Disk Performance
+              </Typography>
               <Typography>Read Speed: {data.disk.readSpeed.toFixed(2)} GB/s</Typography>
               <Typography>Write Speed: {data.disk.writeSpeed.toFixed(2)} GB/s</Typography>
               <Typography>IOPS: {data.disk.iops.toFixed(0)}</Typography>
@@ -575,9 +760,7 @@ export default function Dashboard(): JSX.Element {
         fullWidth
       >
         <DialogTitle>{statsDialog.title}</DialogTitle>
-        <DialogContent>
-          {statsDialog.content}
-        </DialogContent>
+        <DialogContent>{statsDialog.content}</DialogContent>
         <DialogActions>
           <Button onClick={() => setStatsDialog({ open: false, title: '', content: null })}>
             Close
@@ -812,7 +995,7 @@ export default function Dashboard(): JSX.Element {
                   <IconButton
                     size="small"
                     onClick={() => setShowSystemPartitions(!showSystemPartitions)}
-                    color={showSystemPartitions ? "primary" : "default"}
+                    color={showSystemPartitions ? 'primary' : 'default'}
                   >
                     <BuildIcon />
                   </IconButton>
@@ -821,7 +1004,7 @@ export default function Dashboard(): JSX.Element {
                   <IconButton
                     size="small"
                     onClick={() => setCompactView(!compactView)}
-                    color={compactView ? "primary" : "default"}
+                    color={compactView ? 'primary' : 'default'}
                   >
                     <ViewCompactIcon />
                   </IconButton>
@@ -840,7 +1023,7 @@ export default function Dashboard(): JSX.Element {
                             sx={{
                               display: 'flex',
                               alignItems: 'center',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
                             }}
                             onClick={() => toggleDevice(diskName)}
                           >
@@ -854,7 +1037,9 @@ export default function Dashboard(): JSX.Element {
                                     size="small"
                                     sx={{ ml: 1 }}
                                     label={devices[0].smart.health}
-                                    color={devices[0].smart.health === 'PASSED' ? 'success' : 'error'}
+                                    color={
+                                      devices[0].smart.health === 'PASSED' ? 'success' : 'error'
+                                    }
                                   />
                                 )}
                               </Box>
@@ -869,31 +1054,40 @@ export default function Dashboard(): JSX.Element {
                                         console.log('Using main device filesystem:', {
                                           name: mainDevice.name,
                                           used: mainDevice.filesystem.used,
-                                          size: mainDevice.size
+                                          size: mainDevice.size,
                                         });
                                         totalUsed = mainDevice.filesystem.used;
                                       } else {
-                                        const partitions = devices.filter(dev => 
-                                          dev.type === 'part' && 
-                                          dev.filesystem?.used !== undefined &&
-                                          !dev.mount?.includes('boot') && 
-                                          !dev.mount?.includes('efi')
+                                        const partitions = devices.filter(
+                                          (dev) =>
+                                            dev.type === 'part' &&
+                                            dev.filesystem?.used !== undefined &&
+                                            !dev.mount?.includes('boot') &&
+                                            !dev.mount?.includes('efi')
                                         );
-                                        console.log('Using partitions:', partitions.map(p => ({
-                                          name: p.name,
-                                          mount: p.mount,
-                                          used: p.filesystem?.used,
-                                          size: p.size
-                                        })));
-                                        totalUsed = partitions.reduce((acc, dev) => 
-                                          acc + dev.filesystem!.used, 0
+                                        console.log(
+                                          'Using partitions:',
+                                          partitions.map((p) => ({
+                                            name: p.name,
+                                            mount: p.mount,
+                                            used: p.filesystem?.used,
+                                            size: p.size,
+                                          }))
+                                        );
+                                        totalUsed = partitions.reduce(
+                                          (acc, dev) => acc + dev.filesystem!.used,
+                                          0
                                         );
                                       }
                                       return Math.round((totalUsed / mainDevice.size) * 100);
                                     })()}
                                     sx={{ height: 6, borderRadius: 3, mt: 1 }}
                                   />
-                                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.75rem' }}>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ mt: 0.5, fontSize: '0.75rem' }}
+                                  >
                                     {(() => {
                                       let totalUsed = 0;
                                       const mainDevice = devices[0];
@@ -901,27 +1095,36 @@ export default function Dashboard(): JSX.Element {
                                         console.log('Using main device filesystem:', {
                                           name: mainDevice.name,
                                           used: mainDevice.filesystem.used,
-                                          size: mainDevice.size
+                                          size: mainDevice.size,
                                         });
                                         totalUsed = mainDevice.filesystem.used;
                                       } else {
-                                        const partitions = devices.filter(dev => 
-                                          dev.type === 'part' && 
-                                          dev.filesystem?.used !== undefined &&
-                                          !dev.mount?.includes('boot') && 
-                                          !dev.mount?.includes('efi')
+                                        const partitions = devices.filter(
+                                          (dev) =>
+                                            dev.type === 'part' &&
+                                            dev.filesystem?.used !== undefined &&
+                                            !dev.mount?.includes('boot') &&
+                                            !dev.mount?.includes('efi')
                                         );
-                                        console.log('Using partitions:', partitions.map(p => ({
-                                          name: p.name,
-                                          mount: p.mount,
-                                          used: p.filesystem?.used,
-                                          size: p.size
-                                        })));
-                                        totalUsed = partitions.reduce((acc, dev) => 
-                                          acc + dev.filesystem!.used, 0
+                                        console.log(
+                                          'Using partitions:',
+                                          partitions.map((p) => ({
+                                            name: p.name,
+                                            mount: p.mount,
+                                            used: p.filesystem?.used,
+                                            size: p.size,
+                                          }))
+                                        );
+                                        totalUsed = partitions.reduce(
+                                          (acc, dev) => acc + dev.filesystem!.used,
+                                          0
                                         );
                                       }
-                                      return `${formatBytes(totalUsed)} / ${formatBytes(mainDevice.size)} • ${Math.round((totalUsed / mainDevice.size) * 100)}% used`;
+                                      return `${formatBytes(totalUsed)} / ${formatBytes(
+                                        mainDevice.size
+                                      )} • ${Math.round(
+                                        (totalUsed / mainDevice.size) * 100
+                                      )}% used`;
                                     })()}
                                   </Typography>
                                 </Box>
@@ -936,7 +1139,11 @@ export default function Dashboard(): JSX.Element {
                           <Collapse in={expandedDevices.has(diskName)} sx={{ mt: 2 }}>
                             <Grid container spacing={2}>
                               {devices
-                                .filter(device => showSystemPartitions || (!device.name.includes('boot') && !device.name.includes('efi')))
+                                .filter(
+                                  (device) =>
+                                    showSystemPartitions ||
+                                    (!device.name.includes('boot') && !device.name.includes('efi'))
+                                )
                                 .map((device: StorageDevice) => (
                                   <Grid item xs={12} md={compactView ? 6 : 12} key={device.name}>
                                     <Paper variant="outlined" sx={{ p: 1.5 }}>
@@ -961,13 +1168,23 @@ export default function Dashboard(): JSX.Element {
                                             value={device.filesystem.use || 0}
                                             sx={{ height: 6, borderRadius: 3, mb: 0.5 }}
                                           />
-                                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                            {formatBytes(device.filesystem.used)} / {formatBytes(device.filesystem.size)}
-                                            {' • '}{Math.round(device.filesystem.use)}% used
+                                          <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                            sx={{ fontSize: '0.75rem' }}
+                                          >
+                                            {formatBytes(device.filesystem.used)} /{' '}
+                                            {formatBytes(device.filesystem.size)}
+                                            {' • '}
+                                            {Math.round(device.filesystem.use)}% used
                                           </Typography>
                                         </>
                                       ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{ fontSize: '0.75rem' }}
+                                        >
                                           {formatBytes(device.size)} Total
                                           {device.fsType && ` • ${device.fsType}`}
                                         </Typography>
@@ -982,20 +1199,35 @@ export default function Dashboard(): JSX.Element {
                   </Box>
                   <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
                     <IconButton
-                      onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                      onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
                       disabled={currentPage === 0}
                     >
                       <NavigateBeforeIcon />
                     </IconButton>
                     <Typography>
-                      Page {currentPage + 1} of {Math.ceil(Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage)}
+                      Page {currentPage + 1} of{' '}
+                      {Math.ceil(
+                        Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage
+                      )}
                     </Typography>
                     <IconButton
-                      onClick={() => setCurrentPage(prev => Math.min(
-                        Math.ceil(Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage) - 1,
-                        prev + 1
-                      ))}
-                      disabled={currentPage >= Math.ceil(Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage) - 1}
+                      onClick={() =>
+                        setCurrentPage((prev) =>
+                          Math.min(
+                            Math.ceil(
+                              Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage
+                            ) - 1,
+                            prev + 1
+                          )
+                        )
+                      }
+                      disabled={
+                        currentPage >=
+                        Math.ceil(
+                          Object.keys(groupDevices(storageInfo.devices)).length / itemsPerPage
+                        ) -
+                          1
+                      }
                     >
                       <NavigateNextIcon />
                     </IconButton>

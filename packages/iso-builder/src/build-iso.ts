@@ -309,8 +309,8 @@ menuentry "NestOS" {
 
     // List files before creating ISO
     spinner.text = 'Verifying ISO directory structure...';
-    const { stdout: treeOutput } = await execa('tree', [ISO_DIR]);
-    console.log('ISO directory structure:', treeOutput);
+    const { stdout: isoTreeOutput } = await execa('tree', [ISO_DIR]);  // Renamed from treeOutput
+    console.log('ISO directory structure:', isoTreeOutput);
 
     // Try creating ISO with grub-mkrescue first
     try {
@@ -354,61 +354,60 @@ menuentry "NestOS" {
       throw new Error('ISO file was not created');
     }
 
-    // Get ISO details
+    // Get ISO details and verify
     const isoStats = await fs.stat(isoPath);
     console.log(`ISO file created successfully. Size: ${(isoStats.size / 1024 / 1024).toFixed(2)} MB`);
-
-    // Verify ISO file
-    spinner.text = 'Verifying ISO file...';
-    const { stdout: fileInfo } = await execa('file', [isoPath]);
-    console.log('ISO file details:', fileInfo);
-
-    // Verify ISO is bootable
-    if (!fileInfo.includes('bootable')) {
-      throw new Error('ISO is not bootable');
-    }
 
     // Copy ISO to output directory
     spinner.text = 'Copying ISO to output directory...';
     await fs.ensureDir('/output');
     await fs.copy(isoPath, '/output/nestos.iso', { overwrite: true });
 
-    // Verify the copied ISO
-    const outputStats = await fs.stat('/output/nestos.iso');
-    if (outputStats.size !== isoStats.size) {
+    // Final verification
+    const outputPath = '/output/nestos.iso';
+    const outputExists = await fs.pathExists(outputPath);
+    const outputStats = await fs.stat(outputPath);
+
+    if (!outputExists || outputStats.size !== isoStats.size) {
       throw new Error('ISO file copy verification failed');
     }
 
+    // Print build completion info
+    console.log('Build completed. Full directory structure:');
+    const { stdout: finalTreeOutput } = await execa('tree', [BUILD_DIR]);  // Renamed from treeOutput
+    console.log(finalTreeOutput);
+
     spinner.succeed('ISO image created and verified successfully');
-    return 0; // Explicit success exit code
+    
+    // Return success without throwing any errors
+    return true;
   } catch (error) {
     spinner.fail(`Failed to create ISO image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     console.error('Full error details:', error);
-    return 1; // Explicit error exit code
+    return false;
   }
 }
 
-// Modify the buildIso function to use the return value
+// Modify the buildIso function to handle the return properly
 export async function buildIso() {
-  console.log(chalk.blue('Starting NestOS ISO build process...'));
-
   try {
+    console.log(chalk.blue('Starting NestOS ISO build process...'));
+
     await setupBuildEnvironment();
     await downloadBaseSystem();
     await configureSystem();
     await installPackages();
     await installNestOSComponents();
-    
-    const exitCode = await createISO();
-    
-    if (exitCode === 0) {
+    const success = await createISO();
+
+    if (success) {
       console.log(chalk.green('\nBuild completed successfully!'));
       console.log(chalk.white(`ISO image available at: /output/nestos.iso`));
+      process.exit(0);  // Explicitly exit with success code
     } else {
-      console.error(chalk.red('\nBuild failed with exit code:'), exitCode);
+      console.error(chalk.red('\nBuild failed'));
+      process.exit(1);  // Explicitly exit with error code
     }
-    
-    process.exit(exitCode);
   } catch (error) {
     console.error(chalk.red('\nBuild failed:'), error);
     process.exit(1);

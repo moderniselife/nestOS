@@ -3,9 +3,16 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+    <meta name="format-detection" content="telephone=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>NestOS - Modern Home Server Operating System</title>
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="preload" as="image" href="assets/screenshots/dashboard.png">
+    <link rel="preload" as="image" href="assets/screenshots/docker.png">
+    <link rel="preload" as="image" href="assets/screenshots/network.png">
+    <link rel="preload" as="image" href="assets/screenshots/storage.png">
+    <link rel="preload" as="image" href="assets/screenshots/settings.png">
 
     <!-- Primary Meta Tags -->
     <meta name="title" content="NestOS - Modern Home Server Operating System">
@@ -222,40 +229,56 @@
             gap: 50px;
             max-width: 1000px;
             margin: 0 auto;
+            padding: 0 20px;
         }
 
         .screenshot-item {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .screenshot-item img {
+            max-width: 100%;
+            height: auto;
+            width: auto;
+            object-fit: contain;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            -ms-interpolation-mode: nearest-neighbor;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: block;
+        }
+
+        .screenshot-item {
+            max-width: 1280px;
+            margin: 0 auto;
             text-align: center;
             opacity: 0;
             transform: translateY(20px);
             animation: fadeUp 0.8s ease-out forwards;
         }
 
-        .screenshot-item:nth-child(1) {
-            animation-delay: 0.2s;
-        }
-
-        .screenshot-item:nth-child(2) {
-            animation-delay: 0.4s;
-        }
-
-        .screenshot-item:nth-child(3) {
-            animation-delay: 0.6s;
-        }
-
-        .screenshot-item:nth-child(4) {
-            animation-delay: 0.8s;
-        }
-
-        .screenshot-item:nth-child(5) {
-            animation-delay: 1.0s;
-        }
+        .screenshot-item:nth-child(1) { animation-delay: 0.2s; }
+        .screenshot-item:nth-child(2) { animation-delay: 0.4s; }
+        .screenshot-item:nth-child(3) { animation-delay: 0.6s; }
+        .screenshot-item:nth-child(4) { animation-delay: 0.8s; }
+        .screenshot-item:nth-child(5) { animation-delay: 1.0s; }
 
         .screenshot-item img {
-            width: 100%;
+            max-width: 100%;
+            height: auto;
+            width: auto;
+            object-fit: contain;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            -ms-interpolation-mode: nearest-neighbor;
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: block;
+            margin: 0 auto;
         }
 
         .screenshot-item img:hover {
@@ -453,6 +476,81 @@
                 transform: translateY(-5px);
             }
         }
+        /* Image loading and quality optimizations */
+        .screenshot-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 aspect ratio */
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .screenshot-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.1),
+                    transparent);
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .screenshot-item img {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+            will-change: transform;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background-color: var(--bg-paper);
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+
+        .screenshot-item img:not([loading]) {
+            background-color: transparent;
+        }
+
+        /* Add loading animation */
+        .screenshot-item img[loading] {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Prevent blurry images in Chrome */
+        @media screen and (-webkit-min-device-pixel-ratio: 0) {
+            .screenshot-item img {
+                image-rendering: pixelated;
+            }
+        }
+
+        /* Prevent blurry images in Firefox */
+        @-moz-document url-prefix() {
+            .screenshot-item img {
+                image-rendering: -moz-crisp-edges;
+            }
+        }
     </style>
 </head>
 
@@ -484,27 +582,27 @@
                 <h2>Interface Preview</h2>
                 <div class="screenshot-grid">
                     <div class="screenshot-item">
-                        <img src="assets/screenshots/dashboard.png" alt="Dashboard Interface">
+                        <img src="assets/screenshots/dashboard.png" alt="Dashboard Interface" loading="lazy" decoding="async">
                         <h3>Dashboard</h3>
                         <p>Real-time system monitoring and overview</p>
                     </div>
                     <div class="screenshot-item">
-                        <img src="assets/screenshots/docker.png" alt="Docker Management">
+                        <img src="assets/screenshots/docker.png" alt="Docker Management" loading="lazy" decoding="async">
                         <h3>Docker Management</h3>
                         <p>Container management and orchestration</p>
                     </div>
                     <div class="screenshot-item">
-                        <img src="assets/screenshots/network.png" alt="Network Configuration">
+                        <img src="assets/screenshots/network.png" alt="Network Configuration" loading="lazy" decoding="async">
                         <h3>Network Configuration</h3>
                         <p>Network interfaces and services management</p>
                     </div>
                     <div class="screenshot-item">
-                        <img src="assets/screenshots/storage.png" alt="Storage Management">
+                        <img src="assets/screenshots/storage.png" alt="Storage Management" loading="lazy" decoding="async">
                         <h3>Storage Management</h3>
                         <p>Disk management and volume control</p>
                     </div>
                     <div class="screenshot-item">
-                        <img src="assets/screenshots/settings.png" alt="System Settings">
+                        <img src="assets/screenshots/settings.png" alt="System Settings" loading="lazy" decoding="async">
                         <h3>System Settings</h3>
                         <p>System configuration and preferences</p>
                     </div>

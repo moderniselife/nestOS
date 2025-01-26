@@ -3,7 +3,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { globby } from 'globby';
 
-const MAX_IMAGE_SIZE_MB = 0.5; // 500KB threshold
+const MAX_IMAGE_SIZE_MB = 1.0; // 1MB threshold
 const DOCS_DIR = path.join(__dirname, '../docs');
 
 async function optimizeImage(filePath: string): Promise<void> {
@@ -19,9 +19,9 @@ async function optimizeImage(filePath: string): Promise<void> {
                 withoutEnlargement: true,
                 fit: 'inside'
             })
-            .jpeg({
-                quality: 80,
-                progressive: true
+            .png({
+                quality: 90,
+                compressionLevel: 6
             })
             .toFile(tempPath);
 

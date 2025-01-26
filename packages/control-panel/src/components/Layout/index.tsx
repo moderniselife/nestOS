@@ -23,6 +23,7 @@ import Storage from '../Storage';
 import Docker from '../Docker';
 import Network from '../Network';
 import Settings from '../Settings';
+import VM from '../VM';
 import { apiUrl } from '../../App';
 
 const drawerWidth = 240;
@@ -37,6 +38,8 @@ const getPageTitle = (pathname: string): string => {
       return 'Docker Containers';
     case '/network':
       return 'Network Settings';
+    case '/vm':
+      return 'Virtual Machines';
     case '/settings':
       return 'System Settings';
     default:
@@ -179,6 +182,7 @@ export default function Layout(): JSX.Element {
           <Route path="/storage" element={<Storage />} />
           <Route path="/docker" element={<Docker />} />
           <Route path="/network" element={<Network />} />
+          <Route path="/vm" element={<VM />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

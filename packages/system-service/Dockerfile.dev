@@ -1,24 +1,61 @@
-# Use Node.js as base image
-FROM node:20-slim
+# Use Debian as base image for better system utilities
+FROM debian:bullseye-slim
+
+# Install Node.js
+RUN apt-get update && \
+    apt-get install -y curl gnupg && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
     smartmontools \
     mdadm \
     lsb-release \
     procps \
     iproute2 \
+    qemu-system \
+    qemu-utils \
+    libvirt0 \
+    libvirt-daemon \
+    libvirt-daemon-system \
+    libvirt-clients \
+    virtinst \
+    bridge-utils \
     && rm -rf /var/lib/apt/lists/*
+
+# Create necessary directories and set permissions
+RUN mkdir -p /var/lib/libvirt/images && \
+    chmod 777 /var/lib/libvirt/images && \
+    mkdir -p /var/run/libvirt && \
+    chmod 777 /var/run/libvirt && \
+    mkdir -p /etc/libvirt && \
+    echo "listen_tls = 0" >> /etc/libvirt/libvirtd.conf && \
+    echo "listen_tcp = 1" >> /etc/libvirt/libvirtd.conf && \
+    echo "unix_sock_group = 'root'" >> /etc/libvirt/libvirtd.conf && \
+    echo "unix_sock_rw_perms = '0777'" >> /etc/libvirt/libvirtd.conf && \
+    echo "auth_tcp = \"none\"" >> /etc/libvirt/libvirtd.conf && \
+    echo "log_level = 1" >> /etc/libvirt/libvirtd.conf && \
+    echo "log_outputs=\"1:file:/var/log/libvirt/libvirtd.log\"" >> /etc/libvirt/libvirtd.conf
+
+# Create log directory
+RUN mkdir -p /var/log/libvirt && \
+    chmod 777 /var/log/libvirt
+
+# Add libvirt binaries to PATH
+ENV PATH="/usr/sbin:/sbin:$PATH"
 
 # Copy package files
 COPY package.json .
 COPY turbo.json .
 
-# Install dependencies
-RUN npm install
+# Install global and local dependencies
+RUN npm install -g tsx && npm install
 
 # Copy source code
 COPY . .
@@ -26,5 +63,9 @@ COPY . .
 # Expose port
 EXPOSE 3000
 
-# Start development server
+# Copy and set up entrypoint script
+COPY packages/system-service/docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["npm", "run", "dev"]

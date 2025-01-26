@@ -15,7 +15,8 @@ import {
   Cloud as DockerIcon,
   NetworkCheck as NetworkIcon,
   Settings as SettingsIcon,
-  Dashboard as DashboardIcon
+  Dashboard as DashboardIcon,
+  Memory as VMIcon
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -27,6 +28,7 @@ const menuItems = [
   { text: 'Storage', icon: <StorageIcon />, path: '/storage' },
   { text: 'Docker', icon: <DockerIcon />, path: '/docker' },
   { text: 'Network', icon: <NetworkIcon />, path: '/network' },
+  { text: 'Virtual Machines', icon: <VMIcon />, path: '/vm' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' }
 ];
 

@@ -23,6 +23,8 @@
     "@types/fs-extra": "^11.0.4",
     "concurrently": "^9.1.2",
     "eslint-plugin-react": "^7.37.4",
+    "globby": "^14.0.2",
+    "sharp": "^0.33.5",
     "turbo": "^2.3.4",
     "typescript": "^5.7.3"
   },

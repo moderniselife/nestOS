@@ -19,7 +19,7 @@
     <meta property="og:description"
         content="A modern, user-friendly home server operating system built with TypeScript and Debian">
     <meta property="og:image" content="https://nestos.cloud/assets/banner.svg">
-    
+
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://nestos.cloud/">
@@ -397,6 +397,44 @@
             opacity: 0.7;
         }
 
+        .documentation-links {
+            padding: 2rem;
+            text-align: center;
+            margin: 2rem auto;
+            max-width: 800px;
+        }
+
+        .doc-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .doc-button {
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text);
+            transition: all 0.2s ease;
+        }
+
+        .doc-button:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary);
+            background: rgba(255, 112, 67, 0.1);
+        }
+
+        .doc-button .description {
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 0.5rem;
+        }
+
         @keyframes bounce {
 
             0%,
@@ -513,8 +551,19 @@
             <p>© 2025 NestOS. All rights reserved.</p>
             <div class="links">
                 <a href="https://github.com/moderniselife/nestos">GitHub</a>
-                <a href="https://github.com/moderniselife/nestos/wiki">Documentation</a>
-                <a href="https://github.com/moderniselife/nestos/issues">Support</a>
+            </div>
+            <div class="documentation-links">
+                <h2>Documentation</h2>
+                <div class="doc-buttons">
+                    <a href=/guide.html" class="doc-button">
+                        User Guide
+                        <span class="description">Perfect for getting started with NestOS</span>
+                    </a>
+                    <a href="/technical.html" class="doc-button">
+                        Technical Documentation
+                        <span class="description">Advanced configuration and API reference</span>
+                    </a>
+                </div>
             </div>
         </div>
     </footer>

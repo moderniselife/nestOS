@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NestOS - User Guide</title>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --secondary-color: #1e40af;
+            --bg-color: #ffffff;
+            --text-color: #374151;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        .hero {
+            background: var(--primary-color);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 1rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .steps {
+            counter-reset: step;
+        }
+
+        .step {
+            position: relative;
+            padding-left: 3rem;
+            margin: 2rem 0;
+        }
+
+        .step::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: var(--primary-color);
+            color: white;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>Welcome to NestOS</h1>
+        <p>Your Easy-to-Use Network Storage Solution</p>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h2>What is NestOS?</h2>
+            <p>NestOS is your personal storage system that lets you:</p>
+            <ul>
+                <li>Store and share files across your network</li>
+                <li>Access your files from any device</li>
+                <li>Keep your data safe with built-in protection</li>
+                <li>Run apps and services easily</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>Getting Started</h2>
+            <div class="steps">
+                <div class="step">
+                    <h3>Download NestOS</h3>
+                    <p>Download the latest NestOS ISO file from our website</p>
+                </div>
+                
+                <div class="step">
+                    <h3>Create a Boot Drive</h3>
+                    <p>Use tools like Etcher or Rufus to create a bootable USB drive</p>
+                </div>
+
+                <div class="step">
+                    <h3>Install NestOS</h3>
+                    <p>Boot from the USB drive and follow the installation wizard</p>
+                </div>
+
+                <div class="step">
+                    <h3>First Login</h3>
+                    <p>Access the web interface at http://nestos.local</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Basic Features</h2>
+            <ul>
+                <li>File Sharing (Windows & Mac compatible)</li>
+                <li>Media Streaming</li>
+                <li>Automatic Backups</li>
+                <li>User Management</li>
+                <li>Mobile Access</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>Need Help?</h2>
+            <p>Visit our community forum or contact support:</p>
+            <ul>
+                <li>Forum: community.nestos.org</li>
+                <li>Email: support@nestos.org</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

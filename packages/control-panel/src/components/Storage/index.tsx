@@ -209,7 +209,9 @@ export default function Storage(): JSX.Element {
         Physical Devices
       </Typography>
       <Grid container spacing={3} mb={4}>
-        {storageData?.devices.map((device: StorageDevice) => (
+        {storageData?.devices
+          .filter((device: StorageDevice) => !device.name.startsWith('nbd'))
+          .map((device: StorageDevice) => (
           <Grid item xs={12} md={6} key={device.name}>
             <Card>
               <CardContent>
@@ -377,6 +379,7 @@ export default function Storage(): JSX.Element {
         Network Block Devices
       </Typography>
       <Grid container spacing={3} mb={4}>
+        {/* Show NBDs from volumes API */}
         {nbds.map((nbd: NBD) => (
           <Grid item xs={12} md={6} key={nbd.name}>
             <Card>
@@ -417,6 +420,34 @@ export default function Storage(): JSX.Element {
             </Card>
           </Grid>
         ))}
+        {/* Show NBDs from storage devices API */}
+        {storageData?.devices
+          .filter((device: StorageDevice) => device.name.startsWith('nbd'))
+          .map((device: StorageDevice) => (
+            <Grid item xs={12} md={6} key={device.name}>
+              <Card>
+                <CardContent>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <DiskIcon color="primary" />
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="h6">
+                        {device.name}
+                        <Chip
+                          size="small"
+                          label="Device"
+                          color="primary"
+                          sx={{ ml: 1 }}
+                        />
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {formatBytes(device.size)}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
       </Grid>
 
       {/* Mounts Section */}

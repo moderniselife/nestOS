@@ -5,6 +5,7 @@ import { systemRoutes } from './routes/system.js';
 import { storageRoutes } from './routes/storage.js';
 import { dockerRoutes } from './routes/docker.js';
 import { networkRoutes } from './routes/network.js';
+import { vmRoutes } from './routes/vm.js';
 import { setupWebSocketHandlers } from './websocket/index.js';
 
 const fastify = Fastify({
@@ -44,6 +45,7 @@ await fastify.register(systemRoutes, { prefix: '/api/system' });
 await fastify.register(storageRoutes, { prefix: '/api/storage' });
 await fastify.register(dockerRoutes, { prefix: '/api/docker' });
 await fastify.register(networkRoutes, { prefix: '/api/network' });
+await fastify.register(vmRoutes, { prefix: '/api/vm' });
 
 // Setup WebSocket handlers for real-time updates
 setupWebSocketHandlers(fastify);

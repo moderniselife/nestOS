@@ -11,7 +11,7 @@ import {
   Alert,
   Snackbar,
   Stack,
-  Chip
+  Chip,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import SignalWifiStatusbar4BarIcon from '@mui/icons-material/SignalWifiStatusbar4Bar';
@@ -23,6 +23,7 @@ import Storage from '../Storage';
 import Docker from '../Docker';
 import Network from '../Network';
 import Settings from '../Settings';
+import VM from '../VM';
 import { apiUrl } from '../../App';
 
 const drawerWidth = 240;
@@ -39,6 +40,8 @@ const getPageTitle = (pathname: string): string => {
       return 'Network Settings';
     case '/settings':
       return 'System Settings';
+    case '/vm':
+      return 'Virtual Machines';
     default:
       return 'NestOS';
   }
@@ -63,7 +66,7 @@ export default function Layout(): JSX.Element {
         setError('Failed to connect to system service');
         throw error;
       }
-    }
+    },
   });
 
   const handleDrawerToggle = () => {
@@ -82,7 +85,7 @@ export default function Layout(): JSX.Element {
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
           backgroundColor: 'background.paper',
-          borderBottom: `1px solid ${theme.palette.divider}`
+          borderBottom: `1px solid ${theme.palette.divider}`,
         }}
       >
         <Toolbar>
@@ -95,13 +98,13 @@ export default function Layout(): JSX.Element {
           >
             <MenuIcon />
           </IconButton>
-          <Typography 
-            variant="h6" 
-            noWrap 
-            component="div" 
-            sx={{ 
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{
               flexGrow: 1,
-              color: 'text.primary'
+              color: 'text.primary',
             }}
           >
             {getPageTitle(location.pathname)}
@@ -111,9 +114,9 @@ export default function Layout(): JSX.Element {
               <CircularProgress color="primary" size={24} />
             ) : (
               <>
-                <SignalWifiStatusbar4BarIcon 
-                  color="primary" 
-                  sx={{ opacity: systemInfo ? 1 : 0.5 }} 
+                <SignalWifiStatusbar4BarIcon
+                  color="primary"
+                  sx={{ opacity: systemInfo ? 1 : 0.5 }}
                 />
                 <Chip
                   size="small"
@@ -127,23 +130,20 @@ export default function Layout(): JSX.Element {
         </Toolbar>
       </AppBar>
 
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-      >
+      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{
-            keepMounted: true // Better open performance on mobile
+            keepMounted: true, // Better open performance on mobile
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
-              width: drawerWidth
-            }
+              width: drawerWidth,
+            },
           }}
         >
           <Sidebar />
@@ -155,8 +155,8 @@ export default function Layout(): JSX.Element {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
-              borderRight: `1px solid ${theme.palette.divider}`
-            }
+              borderRight: `1px solid ${theme.palette.divider}`,
+            },
           }}
           open
         >
@@ -171,7 +171,7 @@ export default function Layout(): JSX.Element {
           p: 3,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           mt: '64px', // AppBar height
-          backgroundColor: 'background.default'
+          backgroundColor: 'background.default',
         }}
       >
         <Routes>
@@ -179,6 +179,7 @@ export default function Layout(): JSX.Element {
           <Route path="/storage" element={<Storage />} />
           <Route path="/docker" element={<Docker />} />
           <Route path="/network" element={<Network />} />
+          <Route path="/vm" element={<VM />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -190,12 +191,7 @@ export default function Layout(): JSX.Element {
         onClose={handleCloseError}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={handleCloseError} 
-          severity="error" 
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
+        <Alert onClose={handleCloseError} severity="error" variant="filled" sx={{ width: '100%' }}>
           {error}
         </Alert>
       </Snackbar>

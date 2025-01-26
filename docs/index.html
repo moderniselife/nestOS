@@ -548,14 +548,17 @@
 
     <footer>
         <div class="container">
-            <p>© 2025 NestOS. All rights reserved.</p>
-            <div class="links">
-                <a href="https://github.com/moderniselife/nestos">GitHub</a>
-            </div>
+            <p>©
+                <script>document.write(new Date().getFullYear());</script> NestOS. All rights reserved.
+            </p>
             <div class="documentation-links">
                 <h2>Documentation</h2>
                 <div class="doc-buttons">
-                    <a href=/guide.html" class="doc-button">
+                    <a href="https://github.com/moderniselife/nestos" class="doc-button">
+                        GitHub
+                        <span class="description">View the source code and contribute</span>
+                    </a>
+                    <a href="/guide.html" class="doc-button">
                         User Guide
                         <span class="description">Perfect for getting started with NestOS</span>
                     </a>

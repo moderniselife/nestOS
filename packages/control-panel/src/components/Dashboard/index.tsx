@@ -221,7 +221,7 @@ function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]>
   const validDevices = devices.filter(
     (device) =>
       !device.name.startsWith('nbd') && // Filter out NBD devices
-      (device.size > 0 || (device.filesystem?.size && device.filesystem?.size > 0)) // Only include devices with actual size
+      (device.size > 0 || device.filesystem?.size > 0) // Only include devices with actual size
   );
 
   // First, check for Docker environment

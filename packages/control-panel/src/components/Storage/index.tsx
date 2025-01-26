@@ -139,7 +139,6 @@ export default function Storage(): JSX.Element {
           if (response.status === 500) {
             return { raids: [], mounts: [], nbds: [] };
           }
-          console.error('Failed to fetch volumes:', response.statusText, volumeLoading);
           throw new Error('Failed to fetch volumes');
         }
         return response.json();
@@ -213,96 +212,96 @@ export default function Storage(): JSX.Element {
         {storageData?.devices
           .filter((device: StorageDevice) => !device.name.startsWith('nbd'))
           .map((device: StorageDevice) => (
-            <Grid item xs={12} md={6} key={device.name}>
-              <Card>
-                <CardContent>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <DiskIcon color="primary" />
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6">
-                        {device.model || device.name}
-                        <Chip
-                          size="small"
-                          label={getDeviceIcon(device)}
-                          color="primary"
-                          sx={{ ml: 1 }}
-                        />
-                        {device.removable && (
-                          <Chip size="small" label="Removable" variant="outlined" sx={{ ml: 1 }} />
-                        )}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {formatBytes(device.size)} • {device.serial}
-                      </Typography>
-                    </Box>
-                    {device.smart && (
-                      <Tooltip title={`SMART Status: ${device.smart.health}`}>
-                        {device.smart.health === 'PASSED' ? (
-                          <HealthyIcon color="success" />
-                        ) : (
-                          <WarningIcon color="error" />
-                        )}
-                      </Tooltip>
-                    )}
-                  </Stack>
+          <Grid item xs={12} md={6} key={device.name}>
+            <Card>
+              <CardContent>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <DiskIcon color="primary" />
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6">
+                      {device.model || device.name}
+                      <Chip
+                        size="small"
+                        label={getDeviceIcon(device)}
+                        color="primary"
+                        sx={{ ml: 1 }}
+                      />
+                      {device.removable && (
+                        <Chip size="small" label="Removable" variant="outlined" sx={{ ml: 1 }} />
+                      )}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {formatBytes(device.size)} • {device.serial}
+                    </Typography>
+                  </Box>
+                  {device.smart && (
+                    <Tooltip title={`SMART Status: ${device.smart.health}`}>
+                      {device.smart.health === 'PASSED' ? (
+                        <HealthyIcon color="success" />
+                      ) : (
+                        <WarningIcon color="error" />
+                      )}
+                    </Tooltip>
+                  )}
+                </Stack>
 
-                  <Stack direction="row" spacing={2} mt={2}>
+                <Stack direction="row" spacing={2} mt={2}>
+                  <Chip
+                    icon={<TypeIcon />}
+                    label={device.layout?.interfaceType || device.protocol}
+                    variant="outlined"
+                    size="small"
+                  />
+                  {device.layout?.temperature && (
                     <Chip
-                      icon={<TypeIcon />}
-                      label={device.layout?.interfaceType || device.protocol}
+                      icon={<SpeedIcon />}
+                      label={`${device.layout.temperature}°C`}
                       variant="outlined"
                       size="small"
                     />
-                    {device.layout?.temperature && (
-                      <Chip
-                        icon={<SpeedIcon />}
-                        label={`${device.layout.temperature}°C`}
-                        variant="outlined"
-                        size="small"
-                      />
-                    )}
-                    {device.mount && (
-                      <Chip
-                        icon={<MountIcon />}
-                        label={device.mount}
-                        variant="outlined"
-                        size="small"
-                      />
-                    )}
-                  </Stack>
-
-                  {device.filesystem && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Usage
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={device.filesystem.use}
-                        sx={{
-                          height: 10,
-                          borderRadius: 5,
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          '& .MuiLinearProgress-bar': {
-                            backgroundColor:
-                              device.filesystem.use > 90
-                                ? 'error.main'
-                                : device.filesystem.use > 75
-                                ? 'warning.main'
-                                : 'success.main',
-                          },
-                        }}
-                      />
-                      <Typography variant="body2" sx={{ mt: 1 }}>
-                        {formatBytes(device.filesystem.used)} /{' '}
-                        {formatBytes(device.filesystem.size)} ({device.filesystem.use}%)
-                      </Typography>
-                    </Box>
                   )}
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
+                  {device.mount && (
+                    <Chip
+                      icon={<MountIcon />}
+                      label={device.mount}
+                      variant="outlined"
+                      size="small"
+                    />
+                  )}
+                </Stack>
+
+                {device.filesystem && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Usage
+                    </Typography>
+                    <LinearProgress
+                      variant="determinate"
+                      value={device.filesystem.use}
+                      sx={{
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        '& .MuiLinearProgress-bar': {
+                          backgroundColor:
+                            device.filesystem.use > 90
+                              ? 'error.main'
+                              : device.filesystem.use > 75
+                              ? 'warning.main'
+                              : 'success.main',
+                        },
+                      }}
+                    />
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      {formatBytes(device.filesystem.used)} / {formatBytes(device.filesystem.size)}{' '}
+                      ({device.filesystem.use}%)
+                    </Typography>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
       </Grid>
 
       {/* Volumes Section */}
@@ -433,7 +432,12 @@ export default function Storage(): JSX.Element {
                     <Box sx={{ flexGrow: 1 }}>
                       <Typography variant="h6">
                         {device.name}
-                        <Chip size="small" label="Device" color="primary" sx={{ ml: 1 }} />
+                        <Chip
+                          size="small"
+                          label="Device"
+                          color="primary"
+                          sx={{ ml: 1 }}
+                        />
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         {formatBytes(device.size)}

@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   control-panel:
     build:
@@ -22,24 +24,19 @@ services:
     build:
       context: .
       dockerfile: packages/system-service/Dockerfile.dev
-    network_mode: "host"
+    ports:
+      - "3000:3000"
     volumes:
       - .:/workspace
       - /workspace/node_modules
       - /workspace/packages/system-service/node_modules
       - /var/run/docker.sock:/var/run/docker.sock
-      - /var/run/libvirt:/var/run/libvirt
-      - /var/lib/libvirt/images:/var/lib/libvirt/images
-      - /dev/kvm:/dev/kvm
     working_dir: /workspace/packages/system-service
     privileged: true
     environment:
       - NODE_ENV=development
       - CORS_ORIGIN=https://localhost:8443
-      - LIBVIRT_DEFAULT_URI=qemu:///system
-      - PATH=/usr/sbin:/sbin:/usr/bin:/bin
     cap_add:
       - SYS_ADMIN
       - NET_ADMIN
-    devices:
-      - /dev/kvm:/dev/kvm
+    command: sh -c "npm install && npm run dev"

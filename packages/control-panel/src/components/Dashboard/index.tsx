@@ -66,7 +66,7 @@ const AnimatedButton = styled(Button)(() => ({
     boxShadow: '0 0 20px rgba(0, 0, 0, 0.3)',
     border: '2px solid transparent',
     backgroundImage:
-      'linear-gradient(#000, #000), linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000)',
+      'linear-gradient(#000, #000), linear-gradient(45deg, #FF7043, #FF8A65, #FFB74D, #FFF176, #FFD54F, #FF8F00, #D84315, #FF7043)',
     backgroundOrigin: 'border-box',
     backgroundClip: 'padding-box, border-box',
     backgroundSize: '100% 100%, 400%',
@@ -1286,39 +1286,6 @@ export default function Dashboard(): JSX.Element {
                 </Stack>
                 <List>
                   {systemInfo.services.map((service: SystemService) => (
-                    <ListItem key={service.name}>
-                      <ListItemIcon>
-                        {service.running ? (
-                          <CheckIcon color="success" />
-                        ) : (
-                          <ErrorIcon color="error" />
-                        )}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={service.name}
-                        secondary={`Start Mode: ${service.startmode}`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </CardContent>
-            </Card>
-          </Grid>
-        )}
-
-        {/* Docker Status */}
-
-        {/* System Services */}
-        {systemInfo.services && systemInfo.services.length > 0 && (
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-                  <BuildIcon color="primary" />
-                  <Typography variant="h6">Services</Typography>
-                </Stack>
-                <List>
-                  {systemInfo.services.map((service: any) => (
                     <ListItem key={service.name}>
                       <ListItemIcon>
                         {service.running ? (

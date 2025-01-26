@@ -354,6 +354,7 @@ menuentry "NestOS" {
       throw new Error('ISO file was not created');
     }
 
+    // Get ISO details
     const isoStats = await fs.stat(isoPath);
     console.log(`ISO file created successfully. Size: ${(isoStats.size / 1024 / 1024).toFixed(2)} MB`);
 
@@ -362,35 +363,32 @@ menuentry "NestOS" {
     const { stdout: fileInfo } = await execa('file', [isoPath]);
     console.log('ISO file details:', fileInfo);
 
+    // Verify ISO is bootable
+    if (!fileInfo.includes('bootable')) {
+      throw new Error('ISO is not bootable');
+    }
+
     // Copy ISO to output directory
     spinner.text = 'Copying ISO to output directory...';
     await fs.ensureDir('/output');
-    await fs.copy(isoPath, '/output/nestos.iso');
+    await fs.copy(isoPath, '/output/nestos.iso', { overwrite: true });
 
     // Verify the copied ISO
-    const outputIsoExists = await fs.pathExists('/output/nestos.iso');
-    if (!outputIsoExists) {
-      throw new Error('Failed to copy ISO to output directory');
+    const outputStats = await fs.stat('/output/nestos.iso');
+    if (outputStats.size !== isoStats.size) {
+      throw new Error('ISO file copy verification failed');
     }
 
-    spinner.succeed('ISO image created and copied successfully');
-    return true;
+    spinner.succeed('ISO image created and verified successfully');
+    return 0; // Explicit success exit code
   } catch (error) {
     spinner.fail(`Failed to create ISO image: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    console.error('Full error details:');
-
-    if (error && typeof error === 'object') {
-      // Safe type assertion since we checked it's an object
-      const err = error as { [key: string]: unknown };
-      if ('stdout' in err) console.error('Command output:', err.stdout);
-      if ('stderr' in err) console.error('Command error:', err.stderr);
-    }
-
-    throw error;
+    console.error('Full error details:', error);
+    return 1; // Explicit error exit code
   }
 }
 
-// Modify the buildIso function to handle the return value
+// Modify the buildIso function to use the return value
 export async function buildIso() {
   console.log(chalk.blue('Starting NestOS ISO build process...'));
 
@@ -400,15 +398,17 @@ export async function buildIso() {
     await configureSystem();
     await installPackages();
     await installNestOSComponents();
-    const success = await createISO();
-
-    if (success) {
+    
+    const exitCode = await createISO();
+    
+    if (exitCode === 0) {
       console.log(chalk.green('\nBuild completed successfully!'));
       console.log(chalk.white(`ISO image available at: /output/nestos.iso`));
-      process.exit(0);
     } else {
-      throw new Error('ISO creation failed');
+      console.error(chalk.red('\nBuild failed with exit code:'), exitCode);
     }
+    
+    process.exit(exitCode);
   } catch (error) {
     console.error(chalk.red('\nBuild failed:'), error);
     process.exit(1);

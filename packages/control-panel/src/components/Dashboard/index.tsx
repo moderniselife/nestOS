@@ -250,8 +250,12 @@ function groupDevices(devices: StorageDevice[]): Record<string, StorageDevice[]>
     volumeGroups.forEach((devices, key) => {
       // Sort devices so disk comes first, then partitions
       devices.sort((a, b) => {
-        if (a.type === 'disk' && b.type !== 'disk') return -1;
-        if (a.type !== 'disk' && b.type === 'disk') return 1;
+        if (a.type === 'disk' && b.type !== 'disk') {
+          return -1;
+        }
+        if (a.type !== 'disk' && b.type === 'disk') {
+          return 1;
+        }
         return a.name.localeCompare(b.name);
       });
       groups[key] = devices;

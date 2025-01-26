@@ -348,24 +348,33 @@ menuentry "NestOS" {
     }
 
     // Verify ISO was created and get its size
-    const isoExists = await fs.pathExists(path.join(BUILD_DIR, 'nestos.iso'));
+    const isoPath = path.join(BUILD_DIR, 'nestos.iso');
+    const isoExists = await fs.pathExists(isoPath);
     if (!isoExists) {
       throw new Error('ISO file was not created');
     }
 
-    const isoStats = await fs.stat(path.join(BUILD_DIR, 'nestos.iso'));
+    const isoStats = await fs.stat(isoPath);
     console.log(`ISO file created successfully. Size: ${(isoStats.size / 1024 / 1024).toFixed(2)} MB`);
 
-    // Add this at the end of the try block, before the spinner.succeed
+    // Verify ISO file
+    spinner.text = 'Verifying ISO file...';
+    const { stdout: fileInfo } = await execa('file', [isoPath]);
+    console.log('ISO file details:', fileInfo);
+
     // Copy ISO to output directory
     spinner.text = 'Copying ISO to output directory...';
     await fs.ensureDir('/output');
-    await fs.copy(
-      path.join(BUILD_DIR, 'nestos.iso'),
-      '/output/nestos.iso'
-    );
+    await fs.copy(isoPath, '/output/nestos.iso');
 
-    spinner.succeed('ISO image created successfully');
+    // Verify the copied ISO
+    const outputIsoExists = await fs.pathExists('/output/nestos.iso');
+    if (!outputIsoExists) {
+      throw new Error('Failed to copy ISO to output directory');
+    }
+
+    spinner.succeed('ISO image created and copied successfully');
+    return true;
   } catch (error) {
     spinner.fail(`Failed to create ISO image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     console.error('Full error details:');
@@ -381,6 +390,7 @@ menuentry "NestOS" {
   }
 }
 
+// Modify the buildIso function to handle the return value
 export async function buildIso() {
   console.log(chalk.blue('Starting NestOS ISO build process...'));
 
@@ -390,10 +400,15 @@ export async function buildIso() {
     await configureSystem();
     await installPackages();
     await installNestOSComponents();
-    await createISO();
+    const success = await createISO();
 
-    console.log(chalk.green('\nBuild completed successfully!'));
-    console.log(chalk.white(`ISO image available at: ${path.join(BUILD_DIR, 'nestos.iso')}`));
+    if (success) {
+      console.log(chalk.green('\nBuild completed successfully!'));
+      console.log(chalk.white(`ISO image available at: /output/nestos.iso`));
+      process.exit(0);
+    } else {
+      throw new Error('ISO creation failed');
+    }
   } catch (error) {
     console.error(chalk.red('\nBuild failed:'), error);
     process.exit(1);

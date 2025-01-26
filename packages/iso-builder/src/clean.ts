@@ -17,14 +17,14 @@ const TEMP_DIRS = [
 
 async function cleanBuildDirectories() {
   const spinner = ora('Cleaning build directories').start();
-  
+
   try {
     // Remove build directory and all contents
     await fs.remove(BUILD_DIR);
-    
+
     // Recreate empty build directory
     await fs.ensureDir(BUILD_DIR);
-    
+
     spinner.succeed('Build directories cleaned');
   } catch (error) {
     spinner.fail(`Failed to clean build directories: ${error}`);
@@ -34,20 +34,20 @@ async function cleanBuildDirectories() {
 
 async function cleanTempFiles() {
   const spinner = ora('Cleaning temporary files').start();
-  
+
   try {
     // Clean any mounted filesystems
     for (const dir of TEMP_DIRS) {
       try {
         await fs.access(dir);
         // If directory exists, try to unmount it (ignore errors)
-        await execa('umount', ['-f', dir]).catch(() => {});
+        await execa('umount', ['-f', dir]).catch(() => { });
       } catch {
         // Directory doesn't exist, skip
         continue;
       }
     }
-    
+
     spinner.succeed('Temporary files cleaned');
   } catch (error) {
     spinner.fail(`Failed to clean temporary files: ${error}`);
@@ -57,11 +57,11 @@ async function cleanTempFiles() {
 
 export async function main() {
   console.log(chalk.blue('Starting cleanup process...'));
-  
+
   try {
     await cleanTempFiles();
     await cleanBuildDirectories();
-    
+
     console.log(chalk.green('\nCleanup completed successfully!'));
   } catch (error) {
     console.error(chalk.red('\nCleanup failed:'), error);

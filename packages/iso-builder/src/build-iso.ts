@@ -18,13 +18,24 @@ async function setupBuildEnvironment() {
   try {
     // Remove existing build directory if it exists
     if (await fs.pathExists(BUILD_DIR)) {
-      spinner.text = 'Removing existing build directory...';
-      await fs.remove(BUILD_DIR);
+      spinner.text = 'Cleaning build directory...';
+      try {
+        // Instead of removing, clean the contents
+        const files = await fs.readdir(BUILD_DIR);
+        for (const file of files) {
+          const filePath = path.join(BUILD_DIR, file);
+          await fs.remove(filePath);
+        }
+      } catch (cleanError) {
+        console.warn('Warning: Could not clean build directory, continuing anyway...');
+      }
+    } else {
+      // If directory doesn't exist, create it
+      await fs.ensureDir(BUILD_DIR);
     }
 
     // Create build directories with proper permissions
     spinner.text = 'Creating build directories...';
-    await fs.ensureDir(BUILD_DIR);
     await fs.ensureDir(ISO_DIR);
     await fs.ensureDir(CHROOT_DIR);
     await fs.ensureDir(path.join(ISO_DIR, 'boot/grub'));
@@ -43,7 +54,7 @@ async function setupBuildEnvironment() {
     }
 
     spinner.succeed('Build environment setup complete');
-    
+
     // Log directory structure
     console.log('\nBuild directory structure:');
     const { stdout } = await execa('tree', [BUILD_DIR]);
@@ -102,7 +113,7 @@ async function downloadBaseSystem() {
     // Verify the chroot was created properly
     const chrootFiles = await fs.readdir(CHROOT_DIR);
     console.log('\nFiles in chroot directory:', chrootFiles);
-    
+
     if (!chrootFiles.includes('bin') || !chrootFiles.includes('etc')) {
       throw new Error('Chroot directory is missing essential system directories');
     }
@@ -245,10 +256,10 @@ async function createISO() {
     // Find and copy kernel and initrd
     spinner.text = 'Copying kernel and initrd...';
     const bootFiles = await fs.readdir(path.join(CHROOT_DIR, 'boot'));
-    
+
     const kernelFile = bootFiles.find(file => file.startsWith('vmlinuz-'));
     const initrdFile = bootFiles.find(file => file.startsWith('initrd.img-'));
-    
+
     if (!kernelFile || !initrdFile) {
       throw new Error('Kernel or initrd files not found');
     }
@@ -335,18 +346,27 @@ menuentry "NestOS" {
     const isoStats = await fs.stat(path.join(BUILD_DIR, 'nestos.iso'));
     console.log(`ISO file created successfully. Size: ${(isoStats.size / 1024 / 1024).toFixed(2)} MB`);
 
+    // Add this at the end of the try block, before the spinner.succeed
+    // Copy ISO to output directory
+    spinner.text = 'Copying ISO to output directory...';
+    await fs.ensureDir('/output');
+    await fs.copy(
+      path.join(BUILD_DIR, 'nestos.iso'),
+      '/output/nestos.iso'
+    );
+
     spinner.succeed('ISO image created successfully');
   } catch (error) {
     spinner.fail(`Failed to create ISO image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     console.error('Full error details:');
-    
+
     if (error && typeof error === 'object') {
       // Safe type assertion since we checked it's an object
       const err = error as { [key: string]: unknown };
       if ('stdout' in err) console.error('Command output:', err.stdout);
       if ('stderr' in err) console.error('Command error:', err.stderr);
     }
-    
+
     throw error;
   }
 }
@@ -368,4 +388,12 @@ export async function buildIso() {
     console.error(chalk.red('\nBuild failed:'), error);
     process.exit(1);
   }
+}
+
+// Add this at the end of the file
+if (import.meta.url === `file://${__filename}`) {
+  buildIso().catch((error) => {
+    console.error('Failed to build ISO:', error);
+    process.exit(1);
+  });
 }

@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: packages/control-panel/Dockerfile.dev
     ports:
-      - "8443:8443"
+      - '8443:8443'
     volumes:
       - .:/workspace
       - /workspace/node_modules
@@ -19,18 +19,19 @@ services:
     depends_on:
       - system-service
     command: sh -c "npm install && npm run dev"
-      
+
   system-service:
     build:
       context: .
       dockerfile: packages/system-service/Dockerfile.dev
     ports:
-      - "3000:3000"
+      - '3000:3000'
     volumes:
       - .:/workspace
       - /workspace/node_modules
       - /workspace/packages/system-service/node_modules
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./backups:/mnt/backups
     working_dir: /workspace/packages/system-service
     privileged: true
     environment:

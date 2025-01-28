@@ -3,6 +3,9 @@ import { z } from 'zod';
 import si from 'systeminformation';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import axios from 'axios';
+import fs from 'fs/promises';
+import path from 'path';
 
 interface UpdateSettings {
   autoUpdate: boolean;
@@ -13,6 +16,19 @@ const updateSettingsSchema = z.object({
   autoUpdate: z.boolean(),
   schedule: z.enum(['hourly', 'daily']).nullable()
 });
+
+// interface BackupSettings {
+//   enabled: boolean;
+//   location: string;
+//   retention: number;
+// }
+
+const backupSettingsSchema = z.object({
+  enabled: z.boolean(),
+  location: z.string(),
+  retention: z.number().min(1).max(365)
+});
+
 
 const execAsync = promisify(exec);
 
@@ -62,9 +78,39 @@ const performanceTestSchema = {
             iops: { type: 'number' }
           },
           required: ['readSpeed', 'writeSpeed', 'iops']
+        },
+        nestos: {
+          type: 'object',
+          properties: {
+            version: { type: 'string' },
+            build: { type: 'string' },
+            commit: { type: 'string' },
+            branch: { type: 'string' },
+            docker: { type: 'string' },
+            dockerCompose: { type: 'string' }
+          },
         }
       },
       required: ['cpu', 'memory', 'disk']
+    }
+  }
+};
+
+const updateApplySchema = {
+  body: {
+    type: 'object',
+    properties: {
+      target: { type: 'string', enum: ['system', 'nestos', 'all'] }
+    },
+    required: ['target']
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        status: { type: 'string' },
+        message: { type: 'string' }
+      }
     }
   }
 };
@@ -76,6 +122,48 @@ const systemInfoSchema = z.object({
     .transform((val) => val === 'true')
     .pipe(z.boolean().optional().default(false))
 });
+
+const systemSettingsSchema = {
+  body: {
+    type: 'object',
+    properties: {
+      hostname: { type: 'string' },
+      timezone: { type: 'string' }
+    },
+    required: ['hostname', 'timezone']
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        status: { type: 'string' },
+        message: { type: 'string' }
+      }
+    }
+  }
+};
+
+// Add near the top with other imports and helpers
+const runPrivilegedCommand = async (command: string): Promise<{ stdout: string; stderr: string }> => {
+  // Check if running in container or as root
+  const isRoot = process.getuid?.() === 0;
+  const inContainer = fs.access('/.dockerenv').then(() => true).catch(() => false);
+
+  if (isRoot || await inContainer) {
+    // In container or root, run directly
+    return execAsync(command);
+  }
+
+  // Check for SUDO_PASSWORD environment variable
+  const sudoPass = process.env.SUDO_PASSWORD;
+  if (sudoPass) {
+    // Use sudo with password from env
+    return execAsync(`echo "${sudoPass}" | sudo -S ${command}`);
+  }
+
+  // Try without password (if sudo NOPASSWD is configured)
+  return execAsync(`sudo ${command}`);
+};
 
 export const systemRoutes: FastifyPluginAsync = async (fastify) => {
   // Get system information
@@ -91,6 +179,80 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
 
     // Calculate uptime from process if not available from OS
     const systemUptime = os.uptime ?? Math.floor(process.uptime());
+
+    // Add this helper function at the top of the file with other imports
+    const getNestOSInfo = async () => {
+      // Get git information
+      const getGitInfo = async () => {
+        try {
+          const [commitHash, branch] = await Promise.all([
+            execAsync('git rev-parse HEAD').then(res => res.stdout.trim()),
+            execAsync('git rev-parse --abbrev-ref HEAD').then(res => res.stdout.trim())
+          ]);
+          return { commitHash, branch };
+        } catch (error) {
+          console.error('Error getting git info:', error);
+          return { commitHash: '', branch: '' };
+        }
+      };
+
+      // Get docker versions
+      const getDockerInfo = async () => {
+        try {
+          const dockerVersion = await execAsync('docker --version')
+            .then(res => res.stdout.match(/Docker version ([0-9.]+)/)?.[1] || '')
+            .catch(() => '');
+
+          const dockerComposeVersion = await execAsync('docker compose version')
+            .then(res => res.stdout.match(/Docker Compose version ([0-9.]+)/)?.[1] || '')
+            .catch(() => '');
+
+          return { dockerVersion, dockerComposeVersion };
+        } catch (error) {
+          console.error('Error getting docker info:', error);
+          return { dockerVersion: '', dockerComposeVersion: '' };
+        }
+      };
+
+      try {
+        // Get package.json version
+        const packageJsonPath = path.resolve(process.cwd(), 'package.json');
+        const packageJson = await fs.readFile(packageJsonPath, 'utf-8')
+          .then(data => JSON.parse(data))
+          .catch(() => ({ version: '0.0.0' }));
+
+        // Get build number (using timestamp if not available)
+        const buildNumber = process.env.BUILD_NUMBER || Math.floor(Date.now() / 1000).toString();
+
+        // Get git and docker info concurrently
+        const [gitInfo, dockerInfo] = await Promise.all([
+          getGitInfo(),
+          getDockerInfo()
+        ]);
+
+        return {
+          version: packageJson.version,
+          build: buildNumber,
+          commit: gitInfo.commitHash,
+          branch: gitInfo.branch,
+          docker: dockerInfo.dockerVersion,
+          dockerCompose: dockerInfo.dockerComposeVersion
+        };
+      } catch (error) {
+        console.error('Error getting NestOS info:', error);
+        // Return default values if anything fails
+        return {
+          version: process.env.npm_package_version || '0.0.0',
+          build: Math.floor(Date.now() / 1000).toString(),
+          commit: '',
+          branch: '',
+          docker: '',
+          dockerCompose: ''
+        };
+      }
+    };
+
+    const nestosInfo = await getNestOSInfo();
 
     const basicInfo = {
       hostname: os.hostname,
@@ -111,7 +273,8 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         used: mem.used,
         active: mem.active,
         available: mem.available
-      }
+      },
+      nestos: nestosInfo
     };
 
     if (!detailed) {
@@ -394,22 +557,22 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // Check for NestOS updates
-  fastify.get('/updates/check', async () => {
+  const checkNestOSUpdates = async () => {
     try {
-      // Get current version
-      const { stdout: currentHash } = await execAsync('git rev-parse HEAD');
+      // Read local package.json
+      const packageJsonPath = path.resolve(process.cwd(), 'package.json');
+      const localPackageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
+      const currentVersion = localPackageJson.version;
 
-      // Fetch latest updates
-      await execAsync('git fetch origin main');
-
-      // Get latest version
-      const { stdout: latestHash } = await execAsync('git rev-parse origin/main');
+      // Fetch remote package.json
+      const remotePackageJson = await axios.get('https://raw.githubusercontent.com/moderniselife/nestos/refs/heads/main/package.json')
+        .then(res => res.data);
+      const latestVersion = remotePackageJson.version;
 
       // Get commit details if there's an update
       let updateDetails = null;
-      if (currentHash.trim() !== latestHash.trim()) {
-        const { stdout: commitLog } = await execAsync('git log --pretty=format:"%h - %s" HEAD..origin/main');
+      if (currentVersion !== latestVersion) {
+        const { stdout: commitLog } = await execAsync('git fetch origin main && git log --pretty=format:"%h - %s" HEAD..origin/main');
         updateDetails = commitLog.split('\n').map(line => {
           const [hash, message] = line.split(' - ');
           return { hash, message };
@@ -417,29 +580,142 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       return {
-        currentVersion: currentHash.trim(),
-        latestVersion: latestHash.trim(),
-        updateAvailable: currentHash.trim() !== latestHash.trim(),
+        currentVersion,
+        latestVersion,
+        updateAvailable: currentVersion !== latestVersion,
         updateDetails
       };
     } catch (error) {
       throw new Error(`Failed to check for updates: ${error}`);
     }
+  };
+
+  const checkSystemUpdates = async () => {
+    try {
+      const { platform } = process;
+
+      if (platform === 'darwin') {
+        // macOS code remains the same
+        const { stdout: updateCheck } = await execAsync('softwareupdate -l');
+        const hasUpdates = !updateCheck.includes('No new software available');
+
+        return {
+          updateAvailable: hasUpdates,
+          currentVersion: 'macOS',
+          latestVersion: hasUpdates ? 'Updates available' : 'Up to date',
+          updateDetails: hasUpdates ? [{
+            hash: 'system',
+            message: updateCheck.trim()
+          }] : null
+        };
+      } else if (platform === 'linux') {
+        // Get current system version
+        const { stdout: osRelease } = await execAsync('cat /etc/os-release');
+        const currentVersion = osRelease
+          .split('\n')
+          .find(line => line.startsWith('VERSION_ID='))
+          ?.split('=')[1]
+          .replace(/"/g, '') || '';
+
+        // Get available updates
+        await execAsync('apt-get update');
+        const { stdout: upgradeCheck } = await execAsync('apt-get upgrade -s');
+
+        // Parse upgrade information
+        const updates = upgradeCheck
+          .split('\n')
+          .filter(line => line.startsWith('Inst '))
+          .map(line => {
+            const parts = line.split(' ');
+            return {
+              package: parts[1],
+              version: parts[2] || '',
+              description: parts.slice(3).join(' ').replace(/[[\]]/g, '')
+            };
+          });
+
+        // Get security updates count
+        const securityUpdates = updates.filter(update =>
+          update.description.toLowerCase().includes('security')
+        );
+
+        return {
+          updateAvailable: updates.length > 0,
+          currentVersion: `Debian ${currentVersion}`,
+          latestVersion: updates.length > 0
+            ? `${updates.length} updates available (${securityUpdates.length} security updates)`
+            : `Debian ${currentVersion}`,
+          updateDetails: updates.map(update => ({
+            hash: update.package,
+            message: `${update.package} (${update.version}) - ${update.description}`
+          }))
+        };
+      }
+
+      throw new Error(`Unsupported platform: ${platform}`);
+    } catch (error) {
+      throw new Error(`Failed to check for system updates: ${error}`);
+    }
+  };
+
+  // Check for System and NestOS updates
+  fastify.get('/updates/check', async () => {
+    try {
+      // Check for system updates
+      const systemUpdates = await checkSystemUpdates();
+      // Check for NestOS updates
+      const nestosUpdates = await checkNestOSUpdates();
+
+      const response = {
+        system: {
+          updateAvailable: systemUpdates.updateAvailable,
+          currentVersion: systemUpdates.currentVersion,
+          latestVersion: systemUpdates.latestVersion,
+          updateDetails: systemUpdates.updateDetails
+        },
+        nestos: {
+          updateAvailable: nestosUpdates.updateAvailable,
+          currentVersion: nestosUpdates.currentVersion,
+          latestVersion: nestosUpdates.latestVersion,
+          updateDetails: nestosUpdates.updateDetails
+        }
+      };
+
+      return response;
+    } catch (error) {
+      throw new Error(`Failed to check for updates: ${error}`);
+    }
   });
 
-  // Update NestOS
-  fastify.post('/updates/apply', async () => {
+  // Update system or NestOS
+  fastify.post('/updates/apply', { schema: updateApplySchema }, async (request) => {
     try {
-      // Pull latest changes
-      await execAsync('git pull origin main');
+      const { target } = request.body as { target: 'system' | 'nestos' | 'all' };
 
-      // Rebuild and restart services
-      await execAsync('npm run build');
-      await execAsync('systemctl restart nestos-system nestos-control-panel');
+      if (target === 'system' || target === 'all') {
+        const { platform } = process;
+        if (platform === 'darwin') {
+          await execAsync('softwareupdate -i -a');
+        } else if (platform === 'linux') {
+          await execAsync('apt-get update');
+          await execAsync('DEBIAN_FRONTEND=noninteractive apt-get upgrade -y');
+        } else {
+          throw new Error(`Unsupported platform: ${platform}`);
+        }
+      }
+
+      if (target === 'nestos' || target === 'all') {
+        // Pull latest changes
+        await execAsync('git pull origin main');
+        // Rebuild
+        await execAsync('npm run build');
+        // Restart services
+        await execAsync('systemctl restart nestos-system nestos-control-panel');
+      }
 
       return {
         status: 'updated',
-        message: 'System updated successfully'
+        message: `Successfully updated ${target === 'all' ? 'system and NestOS' : target}`
       };
     } catch (error) {
       throw new Error(`Update failed: ${error}`);
@@ -507,6 +783,194 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       return { status: 'success' };
     } catch (error) {
       throw new Error(`Failed to update settings: ${error}`);
+    }
+  });
+
+  // Get available timezones
+  fastify.get('/timezones', async () => {
+    try {
+      // Use Intl API to get all timezone names
+      const timezones = Intl.supportedValuesOf('timeZone');
+      return timezones;
+    } catch (error) {
+      // Fallback to a basic list of common timezones if Intl API fails
+      return [
+        'UTC',
+        'America/New_York',
+        'America/Chicago',
+        'America/Denver',
+        'America/Los_Angeles',
+        'Europe/London',
+        'Europe/Paris',
+        'Europe/Berlin',
+        'Asia/Tokyo',
+        'Asia/Shanghai',
+        'Australia/Sydney',
+        'Pacific/Auckland'
+      ];
+    }
+  });
+
+  // Update system settings
+  fastify.post('/settings', { schema: systemSettingsSchema }, async (request) => {
+    try {
+      const { hostname, timezone } = request.body as { hostname: string; timezone: string };
+      const { platform } = process;
+      const errors: string[] = [];
+
+      // Update hostname
+      try {
+        if (platform === 'win32') {
+          // Windows uses PowerShell directly
+          await execAsync(`powershell -Command "Rename-Computer -NewName '${hostname}' -Force"`);
+        } else {
+          // Use runPrivilegedCommand for Unix-like systems
+          await runPrivilegedCommand(
+            platform === 'darwin'
+              ? `scutil --set HostName ${hostname} && scutil --set LocalHostName ${hostname} && scutil --set ComputerName ${hostname}`
+              : `hostnamectl set-hostname ${hostname}`
+          );
+        }
+      } catch (err) {
+        errors.push(`Hostname update failed: ${err}`);
+      }
+
+      // Update timezone
+      try {
+        if (platform === 'win32') {
+          // Windows uses tzutil directly
+          await execAsync(`tzutil /s "${timezone}"`);
+        } else {
+          // Use runPrivilegedCommand for Unix-like systems
+          await runPrivilegedCommand(
+            platform === 'darwin'
+              ? `systemsetup -settimezone ${timezone}`
+              : `timedatectl set-timezone ${timezone}`
+          );
+        }
+      } catch (err) {
+        errors.push(`Timezone update failed: ${err}`);
+      }
+
+      if (errors.length > 0) {
+        return {
+          status: 'partial',
+          message: `Some settings failed to update: ${errors.join('; ')}`
+        };
+      }
+
+      return {
+        status: 'success',
+        message: 'System settings updated successfully'
+      };
+    } catch (error) {
+      throw new Error(`Failed to update system settings: ${error}`);
+    }
+  });
+
+  // Add these routes before the final export
+  // Get backup settings
+  fastify.get('/backup/settings', async () => {
+    try {
+      const settingsPath = path.join(process.cwd(), 'backup-settings.json');
+      try {
+        const settings = JSON.parse(await fs.readFile(settingsPath, 'utf-8'));
+        return backupSettingsSchema.parse(settings);
+      } catch {
+        // Return default settings if file doesn't exist
+        return {
+          enabled: false,
+          location: '/mnt/backups',
+          retention: 30
+        };
+      }
+    } catch (error) {
+      throw new Error(`Failed to get backup settings: ${error}`);
+    }
+  });
+
+  // Update backup settings
+  fastify.post('/backup/settings', async (request) => {
+    try {
+      const settings = backupSettingsSchema.parse(request.body);
+      const settingsPath = path.join(process.cwd(), 'backup-settings.json');
+
+      // Create backup directory if it doesn't exist
+      await runPrivilegedCommand(`mkdir -p ${settings.location}`);
+
+      // Save settings
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+
+      // Update cron job if automatic backups are enabled
+      let currentCrontab = '';
+      try {
+        const { stdout } = await execAsync('crontab -l');
+        currentCrontab = stdout;
+      } catch {
+        // No crontab exists yet
+      }
+
+      // Remove existing backup entries
+      currentCrontab = currentCrontab
+        .split('\n')
+        .filter(line => !line.includes('backup.sh'))
+        .join('\n');
+
+      if (settings.enabled) {
+        // Add daily backup job at midnight
+        currentCrontab += `\n0 0 * * * ${process.cwd()}/scripts/backup.sh ${settings.location} ${settings.retention}`;
+      }
+
+      // Write new crontab
+      await execAsync(`echo "${currentCrontab.trim()}" | crontab -`);
+
+      return { status: 'success', message: 'Backup settings updated successfully' };
+    } catch (error) {
+      throw new Error(`Failed to update backup settings: ${error}`);
+    }
+  });
+
+  // Trigger manual backup
+  fastify.post('/backup/run', async () => {
+    try {
+      const settingsPath = path.join(process.cwd(), 'backup-settings.json');
+      const settings = JSON.parse(await fs.readFile(settingsPath, 'utf-8'));
+
+      // Create backup filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupFile = path.join(settings.location, `backup-${timestamp}.tar.gz`);
+
+      // Create backup directory if it doesn't exist
+      await runPrivilegedCommand(`mkdir -p ${settings.location}`);
+
+      // Create backup
+      await runPrivilegedCommand(`tar -czf ${backupFile} \
+      --exclude='node_modules' \
+      --exclude='*.log' \
+      --exclude='*.tar.gz' \
+      ${process.cwd()}`);
+
+      // Clean up old backups
+      const { stdout: files } = await execAsync(`find ${settings.location} -name "backup-*.tar.gz" -type f`);
+      const backupFiles = files.split('\n').filter(Boolean);
+
+      if (backupFiles.length > settings.retention) {
+        const filesToDelete = backupFiles
+          .sort()
+          .slice(0, backupFiles.length - settings.retention);
+
+        for (const file of filesToDelete) {
+          await fs.unlink(file);
+        }
+      }
+
+      return {
+        status: 'success',
+        message: 'Backup completed successfully',
+        file: backupFile
+      };
+    } catch (error) {
+      throw new Error(`Backup failed: ${error}`);
     }
   });
 };

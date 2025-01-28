@@ -1,0 +1,5 @@
+{
+  "enabled": false,
+  "location": "/mnt/backups",
+  "retention": 30
+}

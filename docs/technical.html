@@ -6,15 +6,19 @@
     <title>NestOS Technical Documentation</title>
     <style>
         :root {
-            --primary-color: #2563eb;
-            --code-bg: #1f2937;
-            --text-color: #374151;
+            --primary: #FF7043;
+            --primary-dark: #FF5722;
+            --bg-dark: #121212;
+            --bg-paper: #1E1E1E;
+            --text: #FFFFFF;
+            --code-bg: #2A2A2A;
         }
 
         body {
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text);
             line-height: 1.6;
-            color: var(--text-color);
             margin: 0;
             padding: 0;
         }
@@ -26,12 +30,13 @@
         }
 
         .sidebar {
-            background: #f3f4f6;
+            background: var(--bg-paper);
             padding: 2rem;
             position: sticky;
             top: 0;
             height: 100vh;
             overflow-y: auto;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .content {
@@ -43,19 +48,27 @@
             background: var(--code-bg);
             color: #e5e7eb;
             padding: 1rem;
-            border-radius: 4px;
+            border-radius: 8px;
             overflow-x: auto;
-        }
-
-        code {
-            font-family: 'Monaco', 'Consolas', monospace;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .api-endpoint {
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
+            background: var(--bg-paper);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
             margin: 1rem 0;
             padding: 1rem;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp 0.8s ease-out forwards;
+        }
+
+        .api-endpoint:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 20px rgba(255, 112, 67, 0.1);
         }
 
         .method {
@@ -65,61 +78,79 @@
             font-weight: bold;
         }
 
-        .get { background: #10B981; color: white; }
-        .post { background: #3B82F6; color: white; }
+        .get { background: var(--primary); color: white; }
+        .post { background: var(--primary-dark); color: white; }
         .put { background: #F59E0B; color: white; }
         .delete { background: #EF4444; color: white; }
 
-        /* Search functionality styles */
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        h2 {
+            color: var(--primary);
+            margin-top: 2rem;
+        }
+
         .search-container {
-            padding: 1rem;
-            background: white;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            margin-bottom: 1rem;
         }
 
         .search-input {
             width: 100%;
             padding: 0.5rem;
-            border: 1px solid #e5e7eb;
+            background: var(--bg-dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 4px;
+            color: var(--text);
         }
 
-        /* Screenshot styles */
-        .screenshot {
-            max-width: 100%;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            margin: 1rem 0;
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
         }
 
-        /* Troubleshooting styles */
+        @keyframes fadeUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .troubleshooting-item {
-            border-left: 4px solid #ef4444;
+            background: var(--bg-paper);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
             padding: 1rem;
             margin: 1rem 0;
-            background: #fef2f2;
+            transition: all 0.3s ease;
+        }
+
+        .troubleshooting-item:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 20px rgba(255, 112, 67, 0.1);
         }
 
         .solution {
-            border-left: 4px solid #10b981;
+            background: rgba(255, 112, 67, 0.1);
+            border-left: 4px solid var(--primary);
             padding: 1rem;
             margin: 1rem 0;
-            background: #f0fdf4;
+            border-radius: 0 8px 8px 0;
         }
 
-        /* API documentation styles */
-        .api-params {
-            margin-left: 1rem;
-            font-size: 0.9em;
-        }
-
-        .api-response {
-            background: #f8fafc;
-            padding: 1rem;
-            border-radius: 4px;
-            margin-top: 0.5rem;
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                position: static;
+                height: auto;
+            }
         }
     </style>
 </head>

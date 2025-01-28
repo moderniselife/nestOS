@@ -1,18 +1,19 @@
-# Use Node.js as base image
 FROM node:20-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && \
+    apt-get install -y \
     smartmontools \
     mdadm \
     lsb-release \
     procps \
     iproute2 \
     iputils-ping \
-    && rm -rf /var/lib/apt/lists/*
+    git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /var/cache/apt/archives/*
 
 # Copy package files
 COPY package.json .

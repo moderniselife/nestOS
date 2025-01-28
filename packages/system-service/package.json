@@ -4,15 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "node -e \"if (process.getuid() !== 0 && !process.env.DOCKER) { require('child_process').execSync('sudo -E tsx watch src/start-dev.ts', {stdio: 'inherit'}); } else { require('child_process').execSync('tsx watch src/start-dev.ts', {stdio: 'inherit'}); }\"",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node -e \"if (process.getuid() !== 0 && !process.env.DOCKER) { require('child_process').execSync('sudo -E node dist/index.js', {stdio: 'inherit'}); } else { require('child_process').execSync('node dist/index.js', {stdio: 'inherit'}); }\"",
     "lint": "eslint src --ext ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@fastify/cors": "^8.5.0",
     "@fastify/websocket": "^8.3.1",
+    "axios": "^1.7.9",
     "dockerode": "^4.0.0",
     "fastify": "^4.25.2",
     "systeminformation": "^5.21.22",

@@ -67,3 +67,4 @@ packages/iso-builder/chroot/
 *.crt
 *.cert
 *.csr
+backups

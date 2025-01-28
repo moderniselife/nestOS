@@ -1,8 +1,14 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import Docker from 'dockerode';
+import { existsSync } from 'fs';
 
-const docker = new Docker({ socketPath: '/var/run/docker.sock' });
+const docker = new Docker({
+  socketPath: '/var/run/docker.sock',
+  // Use the host's Docker daemon
+  host: undefined,
+  port: undefined
+});
 
 // Stats response schema
 // const statsResponseSchema = z.object({
@@ -14,6 +20,35 @@ const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 //     disk: z.string()
 //   }))
 // });
+
+function resolveVolumePath(path: string): string {
+  // Check if we're running inside a container by checking /.dockerenv
+  const isInContainer = existsSync('/.dockerenv');
+
+  console.log({
+    originalPath: path,
+    isInContainer,
+    workspacePath: `/workspace/${path}`,
+    cwdPath: `${process.cwd()}/${path}`,
+    mntPath: path.startsWith('/mnt') ? path : null
+  });
+
+  // For absolute paths starting with /mnt, use them directly
+  if (path.startsWith('/mnt/')) {
+    return path;
+  }
+
+  // For other absolute paths
+  if (path.startsWith('/')) {
+    return path;
+  }
+
+  // For relative paths
+  if (isInContainer) {
+    return `/workspace/${path}`;
+  }
+  return `${process.cwd()}/${path}`;
+}
 
 const containerSchema = z.object({
   image: z.string(),
@@ -220,18 +255,50 @@ export const dockerRoutes: FastifyPluginAsync = async (fastify) => {
     };
   });
 
+
   // Create container
+  // fastify.post('/containers', async (request) => {
+  //   const { image, name, ports, volumes, env, restart } = containerSchema.parse(request.body);
+
+  //   const portBindings: Docker.PortMap = {};
+  //   const exposedPorts: Record<string, Record<string, never>> = {};
+
+  //   ports?.forEach(({ container, host }) => {
+  //     const portStr = `${container}/tcp`;
+  //     exposedPorts[portStr] = {};
+  //     portBindings[portStr] = [{ HostPort: host.toString() }];
+  //   });
+
+  //   const container = await docker.createContainer({
+  //     Image: image,
+  //     name,
+  //     ExposedPorts: exposedPorts,
+  //     HostConfig: {
+  //       PortBindings: portBindings,
+  //       Binds: volumes?.map(v => `${v.host}:${v.container}`),
+  //       RestartPolicy: restart ? { Name: restart } : undefined
+  //     },
+  //     Env: env ? Object.entries(env).map(([key, value]) => `${key}=${value}`) : undefined
+  //   });
+
+  //   await container.start();
+  //   return container.inspect();
+  // });
+
   fastify.post('/containers', async (request) => {
-    const { image, name, ports, volumes, env, restart } = containerSchema.parse(request.body);
+    const { image, name, ports, volumes, env, restart, ...otherOptions } = containerSchema.parse(request.body);
 
     const portBindings: Docker.PortMap = {};
     const exposedPorts: Record<string, Record<string, never>> = {};
 
-    ports?.forEach(({ container, host }) => {
-      const portStr = `${container}/tcp`;
+    ports?.forEach(({ container, host, protocol }) => {
+      const portStr = `${container}/${protocol}`;
       exposedPorts[portStr] = {};
       portBindings[portStr] = [{ HostPort: host.toString() }];
     });
+
+    // Transform volume paths to absolute paths
+    const binds = volumes?.map(v => `${resolveVolumePath(v.host)}:${v.container}:${v.mode}`);
 
     const container = await docker.createContainer({
       Image: image,
@@ -239,8 +306,9 @@ export const dockerRoutes: FastifyPluginAsync = async (fastify) => {
       ExposedPorts: exposedPorts,
       HostConfig: {
         PortBindings: portBindings,
-        Binds: volumes?.map(v => `${v.host}:${v.container}`),
-        RestartPolicy: restart ? { Name: restart } : undefined
+        Binds: binds,
+        RestartPolicy: restart ? { Name: restart } : undefined,
+        ...otherOptions
       },
       Env: env ? Object.entries(env).map(([key, value]) => `${key}=${value}`) : undefined
     });
@@ -413,5 +481,51 @@ export const dockerRoutes: FastifyPluginAsync = async (fastify) => {
     });
 
     return logs;
+  });
+
+  // Add container inspect endpoint
+  fastify.get('/containers/:id/inspect', async (request) => {
+    const { id } = z.object({
+      id: z.string()
+    }).parse(request.params);
+
+    const container = docker.getContainer(id);
+    const info = await container.inspect();
+    return info;
+  });
+
+  // Add container update endpoint
+  fastify.put('/containers/:id/update', async (request) => {
+    const { id } = z.object({
+      id: z.string()
+    }).parse(request.params);
+
+    const updateSchema = z.object({
+      memory: z.number().optional(),
+      cpu_shares: z.number().optional(),
+      restart_policy: z.string().optional(),
+      network_mode: z.string().optional(),
+      privileged: z.boolean().optional(),
+    });
+
+    const updateData = updateSchema.parse(request.body);
+    const container = docker.getContainer(id);
+    await container.update(updateData);
+    return { status: 'updated' };
+  });
+
+  // Add container rename endpoint
+  fastify.post('/containers/:id/rename', async (request) => {
+    const { id } = z.object({
+      id: z.string()
+    }).parse(request.params);
+
+    const { name } = z.object({
+      name: z.string()
+    }).parse(request.body);
+
+    const container = docker.getContainer(id);
+    await container.rename({ name });
+    return { status: 'renamed' };
   });
 };

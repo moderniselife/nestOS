@@ -32,6 +32,7 @@ services:
       - /workspace/packages/system-service/node_modules
       - /var/run/docker.sock:/var/run/docker.sock
       - ./backups:/mnt/backups
+      - ./devfs:/mnt/devfs
     working_dir: /workspace/packages/system-service
     privileged: true
     environment:

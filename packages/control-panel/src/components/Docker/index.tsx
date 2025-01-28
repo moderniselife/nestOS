@@ -18,6 +18,7 @@ import {
   Refresh as RestartIcon,
   Add as AddIcon,
   Terminal as LogsIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -27,12 +28,23 @@ import { CreateContainerDialog } from './CreateContainerDialog';
 import { ImageSearchDialog } from './ImageSearchDialog';
 // Add to imports
 import { LogsDialog } from './LogsDialog';
+import { EditContainerDialog } from './EditContainerDialog';
 
 interface Port {
   PublicPort?: number;
   PrivatePort: number;
   Type: string;
 }
+
+// interface Container {
+//   Id: string;
+//   Names: string[];
+//   Image: string;
+//   State: string;
+//   Status: string;
+//   Ports: Port[];
+//   Command: string;
+// }
 
 interface Container {
   Id: string;
@@ -42,6 +54,37 @@ interface Container {
   Status: string;
   Ports: Port[];
   Command: string;
+  Config: {
+    Hostname: string;
+    Env: string[];
+    Cmd: string[];
+    ExposedPorts: { [key: string]: object };
+    Labels: { [key: string]: string };
+    Volumes: { [key: string]: object };
+  };
+  HostConfig: {
+    Binds: string[];
+    PortBindings: {
+      [key: string]: Array<{ HostPort: string }>;
+    };
+    RestartPolicy: { Name: string };
+    NetworkMode: string;
+    Privileged: boolean;
+    Devices: Array<{
+      PathOnHost: string;
+      PathInContainer: string;
+      CgroupPermissions: string;
+    }>;
+    Memory: number;
+    CpuShares: number;
+  };
+  Mounts: Array<{
+    Type: string;
+    Source: string;
+    Destination: string;
+    Mode: string;
+    RW: boolean;
+  }>;
 }
 
 export default function Docker(): JSX.Element {
@@ -54,6 +97,14 @@ export default function Docker(): JSX.Element {
     open: false,
     containerId: '',
     name: '',
+  });
+
+  const [editDialog, setEditDialog] = useState<{
+    open: boolean;
+    container: Container | null;
+  }>({
+    open: false,
+    container: null,
   });
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -233,6 +284,11 @@ export default function Docker(): JSX.Element {
                       containerId={logsDialog.containerId}
                       containerName={logsDialog.name}
                     />
+                    <Tooltip title="Edit">
+                      <IconButton onClick={() => setEditDialog({ open: true, container })}>
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
                     <Tooltip title="Delete">
                       <IconButton
                         color="error"
@@ -304,6 +360,11 @@ export default function Docker(): JSX.Element {
           setImageSearchOpen(false);
           // You can pass this to CreateContainerDialog
         }}
+      />
+      <EditContainerDialog
+        open={editDialog.open}
+        onClose={() => setEditDialog({ open: false, container: null })}
+        container={editDialog.container}
       />
     </Box>
   );

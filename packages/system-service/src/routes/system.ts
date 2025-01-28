@@ -938,20 +938,30 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
 
       // Create backup filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupFile = path.join(settings.location, `backup-${timestamp}.tar.gz`);
+      const backupFile = path.join(settings.location, `nestos-backup-${timestamp}.tar.gz`);
 
       // Create backup directory if it doesn't exist
       await runPrivilegedCommand(`mkdir -p ${settings.location}`);
 
-      // Create backup
+      // Get NestOS root directory (two levels up from current directory)
+      const nestosRoot = path.resolve(process.cwd(), '../../');
+
+      // Create backup with important system files and configurations
       await runPrivilegedCommand(`tar -czf ${backupFile} \
-      --exclude='node_modules' \
-      --exclude='*.log' \
-      --exclude='*.tar.gz' \
-      ${process.cwd()}`);
+        --exclude='**/node_modules' \
+        --exclude='**/.git' \
+        --exclude='**/dist' \
+        --exclude='**/*.log' \
+        --exclude='**/*.tar.gz' \
+        --exclude='**/coverage' \
+        --exclude='**/.env' \
+        -C ${nestosRoot} . \
+        -C /etc nestos \
+        -C /etc/systemd/system nestos*.service \
+        2>/dev/null || true`);
 
       // Clean up old backups
-      const { stdout: files } = await execAsync(`find ${settings.location} -name "backup-*.tar.gz" -type f`);
+      const { stdout: files } = await execAsync(`find ${settings.location} -name "nestos-backup-*.tar.gz" -type f`);
       const backupFiles = files.split('\n').filter(Boolean);
 
       if (backupFiles.length > settings.retention) {
@@ -966,7 +976,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
 
       return {
         status: 'success',
-        message: 'Backup completed successfully',
+        message: 'System backup completed successfully',
         file: backupFile
       };
     } catch (error) {

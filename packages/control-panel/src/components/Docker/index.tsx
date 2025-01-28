@@ -9,7 +9,7 @@ import {
   IconButton,
   Tooltip,
   Chip,
-  Button
+  Button,
 } from '@mui/material';
 import {
   PlayArrow as StartIcon,
@@ -17,40 +17,123 @@ import {
   Delete as DeleteIcon,
   Refresh as RestartIcon,
   Add as AddIcon,
-  Terminal as LogsIcon
+  Terminal as LogsIcon,
 } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { apiUrl } from '../../App';
+import { CreateContainerDialog } from './CreateContainerDialog';
+// Add to imports
+import { ImageSearchDialog } from './ImageSearchDialog';
+// Add to imports
+import { LogsDialog } from './LogsDialog';
+
+interface Port {
+  PublicPort?: number;
+  PrivatePort: number;
+  Type: string;
+}
 
 interface Container {
   Id: string;
   Names: string[];
   Image: string;
-  ImageID: string;
-  Command: string;
-  Created: number;
   State: string;
   Status: string;
-  Ports: Array<{
-    IP?: string;
-    PrivatePort: number;
-    PublicPort?: number;
-    Type: string;
-  }>;
-}
-
-function getContainerStatusColor(state: string): 'success' | 'error' | 'warning' {
-  switch (state.toLowerCase()) {
-    case 'running':
-      return 'success';
-    case 'exited':
-      return 'error';
-    default:
-      return 'warning';
-  }
+  Ports: Port[];
+  Command: string;
 }
 
 export default function Docker(): JSX.Element {
+  // Add new state for logs dialog
+  const [logsDialog, setLogsDialog] = useState<{
+    open: boolean;
+    containerId: string;
+    name: string;
+  }>({
+    open: false,
+    containerId: '',
+    name: '',
+  });
+
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
+
+  const queryClient = useQueryClient();
+
+  // Add the missing function
+  const getContainerStatusColor = (state: string): 'success' | 'error' | 'warning' => {
+    switch (state.toLowerCase()) {
+      case 'running':
+        return 'success';
+      case 'exited':
+        return 'error';
+      default:
+        return 'warning';
+    }
+  };
+
+  // Move mutations to the top level
+  const startContainer = useMutation({
+    mutationFn: async (containerId: string) => {
+      const response = await fetch(`${apiUrl}/api/docker/containers/${containerId}/start`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to start container');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['docker-containers'] });
+    },
+  });
+
+  const stopContainer = useMutation({
+    mutationFn: async (containerId: string) => {
+      const response = await fetch(`${apiUrl}/api/docker/containers/${containerId}/stop`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to stop container');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['docker-containers'] });
+    },
+  });
+
+  const restartContainer = useMutation({
+    mutationFn: async (containerId: string) => {
+      const response = await fetch(`${apiUrl}/api/docker/containers/${containerId}/restart`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to restart container');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['docker-containers'] });
+    },
+  });
+
+  const deleteContainer = useMutation({
+    mutationFn: async (containerId: string) => {
+      const response = await fetch(`${apiUrl}/api/docker/containers/${containerId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete container');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['docker-containers'] });
+    },
+  });
+
   const { data: containers, isLoading } = useQuery({
     queryKey: ['docker-containers'],
     queryFn: async () => {
@@ -60,29 +143,22 @@ export default function Docker(): JSX.Element {
       }
       return response.json();
     },
-    refetchInterval: 5000
+    refetchInterval: 5000,
   });
 
   if (isLoading) {
     return <LinearProgress />;
   }
 
+  // Update the IconButton onClick handlers
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={3}
-      >
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5">Docker Containers</Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => {
-            // TODO: Implement create container dialog
-            console.log('Create container');
-          }}
+          onClick={() => setCreateDialogOpen(true)}
         >
           Create Container
         </Button>
@@ -111,29 +187,57 @@ export default function Docker(): JSX.Element {
                   <Stack direction="row" spacing={1}>
                     {container.State.toLowerCase() === 'running' ? (
                       <Tooltip title="Stop">
-                        <IconButton color="error">
+                        <IconButton
+                          color="error"
+                          onClick={() => stopContainer.mutate(container.Id)}
+                        >
                           <StopIcon />
                         </IconButton>
                       </Tooltip>
                     ) : (
                       <Tooltip title="Start">
-                        <IconButton color="success">
+                        <IconButton
+                          color="success"
+                          onClick={() => startContainer.mutate(container.Id)}
+                        >
                           <StartIcon />
                         </IconButton>
                       </Tooltip>
                     )}
                     <Tooltip title="Restart">
-                      <IconButton color="warning">
+                      <IconButton
+                        color="warning"
+                        onClick={() => restartContainer.mutate(container.Id)}
+                      >
                         <RestartIcon />
                       </IconButton>
                     </Tooltip>
+
                     <Tooltip title="Logs">
-                      <IconButton>
+                      <IconButton
+                        onClick={() =>
+                          setLogsDialog({
+                            open: true,
+                            containerId: container.Id,
+                            name: container.Names[0].replace(/^\//, ''),
+                          })
+                        }
+                      >
                         <LogsIcon />
                       </IconButton>
                     </Tooltip>
+
+                    <LogsDialog
+                      open={logsDialog.open}
+                      onClose={() => setLogsDialog({ open: false, containerId: '', name: '' })}
+                      containerId={logsDialog.containerId}
+                      containerName={logsDialog.name}
+                    />
                     <Tooltip title="Delete">
-                      <IconButton color="error">
+                      <IconButton
+                        color="error"
+                        onClick={() => deleteContainer.mutate(container.Id)}
+                      >
                         <DeleteIcon />
                       </IconButton>
                     </Tooltip>
@@ -150,9 +254,9 @@ export default function Docker(): JSX.Element {
                         <Chip
                           key={index}
                           size="small"
-                          label={`${port.PublicPort || port.PrivatePort}:${
-                            port.PrivatePort
-                          }/${port.Type}`}
+                          label={`${port.PublicPort || port.PrivatePort}:${port.PrivatePort}/${
+                            port.Type
+                          }`}
                           variant="outlined"
                         />
                       ))}
@@ -172,7 +276,7 @@ export default function Docker(): JSX.Element {
                       p: 1,
                       borderRadius: 1,
                       maxWidth: '100%',
-                      overflow: 'auto'
+                      overflow: 'auto',
                     }}
                   >
                     {container.Command}
@@ -190,6 +294,17 @@ export default function Docker(): JSX.Element {
           </Grid>
         ))}
       </Grid>
+      <CreateContainerDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} />
+      <ImageSearchDialog
+        open={imageSearchOpen}
+        onClose={() => setImageSearchOpen(false)}
+        onImageSelect={(image) => {
+          // Handle image selection
+          console.log('Selected image:', image);
+          setImageSearchOpen(false);
+          // You can pass this to CreateContainerDialog
+        }}
+      />
     </Box>
   );
 }

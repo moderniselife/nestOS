@@ -320,4 +320,69 @@ export const dockerRoutes: FastifyPluginAsync = async (fastify) => {
       diskUsage: df
     };
   });
+  // Add to existing docker routes
+  fastify.get('/images/search', async (request) => {
+    const { term, registry } = z.object({
+      term: z.string(),
+      registry: z.enum(['docker', 'github'])
+    }).parse(request.query);
+
+    if (registry === 'docker') {
+      const response = await fetch(`https://hub.docker.com/v2/search/repositories?query=${encodeURIComponent(term)}`);
+      const data = await response.json();
+      return (data as { results: Array<{ repo_name: string; short_description: string; star_count: number }> }).results.map((result) => ({
+        name: result.repo_name,
+        description: result.short_description,
+        stars: result.star_count
+      }));
+    } else {
+      // GitHub Container Registry search
+      const response = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(term)}+topic:container`, {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      const data = await response.json();
+      return (data as { items: Array<{ full_name: string; description: string; stargazers_count: number }> }).items.map((item) => ({
+        name: `ghcr.io/${item.full_name}`,
+        description: item.description,
+        stars: item.stargazers_count
+      }));
+    }
+  });
+  // Add restart container endpoint
+  fastify.post('/containers/:id/restart', async (request) => {
+    const { id } = z.object({
+      id: z.string()
+    }).parse(request.params);
+
+    const container = docker.getContainer(id);
+    await container.restart();
+    return { status: 'restarted' };
+  });
+
+  // Add logs endpoint
+  fastify.get('/containers/:id/logs', async (request) => {
+    const { id } = z.object({
+      id: z.string(),
+      tail: z.string().optional().default('100')
+    }).parse(request.params);
+
+    let tail = 100;
+
+    const query = request.query as { tail?: string };
+    if (query.tail) {
+      tail = parseInt(query.tail);
+    }
+
+    const container = docker.getContainer(id);
+    const logs = await container.logs({
+      stdout: true,
+      stderr: true,
+      tail,
+      timestamps: true
+    });
+
+    return logs;
+  });
 };

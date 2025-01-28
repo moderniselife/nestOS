@@ -20,14 +20,43 @@ const containerSchema = z.object({
   name: z.string(),
   ports: z.array(z.object({
     container: z.number(),
-    host: z.number()
+    host: z.number(),
+    protocol: z.enum(['tcp', 'udp']).default('tcp')
   })).optional(),
   volumes: z.array(z.object({
     container: z.string(),
-    host: z.string()
+    host: z.string(),
+    mode: z.enum(['rw', 'ro']).default('rw')
   })).optional(),
   env: z.record(z.string()).optional(),
-  restart: z.enum(['no', 'always', 'on-failure', 'unless-stopped']).optional()
+  restart: z.enum(['no', 'always', 'on-failure', 'unless-stopped']).optional(),
+  privileged: z.boolean().optional(),
+  network_mode: z.string().optional(),
+  hostname: z.string().optional(),
+  domainname: z.string().optional(),
+  user: z.string().optional(),
+  working_dir: z.string().optional(),
+  mac_address: z.string().optional(),
+  labels: z.record(z.string()).optional(),
+  devices: z.array(z.object({
+    host: z.string(),
+    container: z.string(),
+    permissions: z.string()
+  })).optional(),
+  capabilities: z.object({
+    add: z.array(z.string()).optional(),
+    drop: z.array(z.string()).optional()
+  }).optional(),
+  dns: z.array(z.string()).optional(),
+  dns_search: z.array(z.string()).optional(),
+  extra_hosts: z.array(z.string()).optional(),
+  security_opt: z.array(z.string()).optional(),
+  memory: z.number().optional(),
+  memory_swap: z.number().optional(),
+  cpu_shares: z.number().optional(),
+  cpuset_cpus: z.string().optional(),
+  command: z.array(z.string()).optional(),
+  entrypoint: z.array(z.string()).optional(),
 });
 
 // Add Docker stats route

@@ -10,6 +10,8 @@ import {
   Typography,
 } from '@mui/material';
 
+const currentDomain = new URL(window.location.href);
+
 function PluginConfig() {
   const [config, setConfig] = React.useState({
     domain: '',
@@ -25,13 +27,21 @@ function PluginConfig() {
 
   const handleSave = async () => {
     try {
-      await fetch('/api/plugins/vaultwarden/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
+      await fetch(
+        currentDomain.protocol + currentDomain.host + ':3000/api/plugins/vaultwarden/config',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config),
+        }
+      );
       // Restart container to apply changes
-      await fetch('/api/plugins/vaultwarden/restart', { method: 'POST' });
+      await fetch(
+        currentDomain.protocol + currentDomain.host + ':3000/api/plugins/vaultwarden/restart',
+        {
+          method: 'POST',
+        }
+      );
     } catch (error) {
       console.error('Failed to save configuration:', error);
     }

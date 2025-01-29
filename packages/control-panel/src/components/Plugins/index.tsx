@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiUrl } from '../../App';
+import * as Babel from '@babel/standalone';
 
 interface Plugin {
   id: string;
@@ -44,9 +45,19 @@ interface Plugin {
 // Add this helper function at the top of the file
 const createConfigComponent = (configCode: string) => {
   return React.lazy(() => {
-    const componentCode = `
+    // Create a babel-transformed version of the component
+    const transformedCode = Babel.transform(configCode, {
+      presets: ['react'],  // Use the built-in 'react' preset instead of '@babel/preset-react'
+      filename: 'dynamic.tsx',
+    }).code;
+
+    // Create the component with proper scope
+    const createComponent = new Function(
+      'React',
+      'MaterialUI',
+      `
+      const { useState } = React;
       const {
-        React,
         Box,
         TextField,
         Button,
@@ -56,15 +67,15 @@ const createConfigComponent = (configCode: string) => {
         Alert,
         FormControlLabel,
         Switch
-      } = arguments[0];
+      } = MaterialUI;
       
-      ${configCode}
+      ${transformedCode}
       
       return PluginConfig;
-    `;
+    `
+    );
 
-    const component = new Function(componentCode)({
-      React,
+    const component = createComponent(React, {
       Box,
       TextField,
       Button,

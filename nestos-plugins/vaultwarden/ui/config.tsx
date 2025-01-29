@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 
 const currentDomain = new URL(window.location.href);
+const apiURL = `http://${currentDomain.hostname}:3000/api/plugins`;
 
 function PluginConfig() {
   const [config, setConfig] = React.useState({
@@ -27,21 +28,15 @@ function PluginConfig() {
 
   const handleSave = async () => {
     try {
-      await fetch(
-        currentDomain.protocol + currentDomain.host + ':3000/api/plugins/vaultwarden/config',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(config),
-        }
-      );
+      await fetch(`${apiURL}/vaultwarden/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
       // Restart container to apply changes
-      await fetch(
-        currentDomain.protocol + currentDomain.host + ':3000/api/plugins/vaultwarden/restart',
-        {
-          method: 'POST',
-        }
-      );
+      await fetch(`${apiURL}/vaultwarden/restart`, {
+        method: 'POST',
+      });
     } catch (error) {
       console.error('Failed to save configuration:', error);
     }

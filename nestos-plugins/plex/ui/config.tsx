@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, TextField, Button, Card, CardContent, Typography, Alert } from '@mui/material';
 const currentDomain = new URL(window.location.href);
+const apiURL = `http://${currentDomain.hostname}:3000/api/plugins`;
 
 function PluginConfig() {
   const [config, setConfig] = React.useState({
@@ -13,7 +14,7 @@ function PluginConfig() {
 
   const handleSave = async () => {
     try {
-      await fetch(currentDomain.protocol + currentDomain.host + ':3000/api/plugins/plex/config', {
+      await fetch(`${apiURL}/plex/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),

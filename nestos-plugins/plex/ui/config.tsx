@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Box, TextField, Button, Card, CardContent, Typography, Alert } from '@mui/material';
 const currentDomain = new URL(window.location.href);
-const apiURL = `http://${currentDomain.hostname}:3000/api/plugins`;
+const apiURL = `http://${currentDomain.hostname}:3000/api/plugins/plex`;
 
-function PluginConfig() {
-  const [config, setConfig] = React.useState({
+async function PluginConfig() {
+  var [config, setConfig] = React.useState({
     timezone: '',
     plexClaim: '',
     configDir: '/var/lib/nestos/plugins/plex',
@@ -12,9 +12,19 @@ function PluginConfig() {
     mediaDir: '/var/lib/nestos/plugins/plex/media',
   });
 
+  const loadConfig = async () => {
+    try {
+      const response = await fetch(`${apiURL}/config`);
+      const data = await response.json();
+      config = data;
+    } catch (error) {
+      console.error('Failed to load configuration:', error);
+    }
+  };
+
   const handleSave = async () => {
     try {
-      await fetch(`${apiURL}/plex/config`, {
+      await fetch(`${apiURL}/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
@@ -23,6 +33,8 @@ function PluginConfig() {
       console.error('Failed to save configuration:', error);
     }
   };
+
+  await loadConfig();
 
   return (
     <Card>

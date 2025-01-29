@@ -11,10 +11,10 @@ import {
 } from '@mui/material';
 
 const currentDomain = new URL(window.location.href);
-const apiURL = `http://${currentDomain.hostname}:3000/api/plugins`;
+const apiURL = `http://${currentDomain.hostname}:3000/api/plugins/vaultwarden`;
 
-function PluginConfig() {
-  const [config, setConfig] = React.useState({
+async function PluginConfig() {
+  var [config, setConfig] = React.useState({
     domain: '',
     allowSignups: false,
     adminToken: '',
@@ -26,21 +26,33 @@ function PluginConfig() {
     smtpPassword: '',
   });
 
+  const loadConfig = async () => {
+    try {
+      const response = await fetch(`${apiURL}/config`);
+      const data = await response.json();
+      config = data;
+    } catch (error) {
+      console.error('Failed to load configuration:', error);
+    }
+  };
+
   const handleSave = async () => {
     try {
-      await fetch(`${apiURL}/vaultwarden/config`, {
+      await fetch(`${apiURL}/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       });
       // Restart container to apply changes
-      await fetch(`${apiURL}/vaultwarden/restart`, {
+      await fetch(`${apiURL}/restart`, {
         method: 'POST',
       });
     } catch (error) {
       console.error('Failed to save configuration:', error);
     }
   };
+
+  await loadConfig();
 
   return (
     <Card>

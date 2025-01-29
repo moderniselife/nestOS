@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "author": "NestOS Community",
     "repository": "https://github.com/moderniselife/nestos-plugin-vaultwarden",
-    "icon": "https://raw.githubusercontent.com/moderniselife/nestos-plugins/main/icons/vaultwarden.png",
+    "icon": "https://raw.githubusercontent.com/moderniselife/nestos/nestos-plugins/main/icons/vaultwarden.jpg",
     "category": "Security",
     "tags": ["password-manager", "security", "docker"]
   },
@@ -17,7 +17,7 @@
     "version": "1.0.0",
     "author": "NestOS Community",
     "repository": "https://github.com/moderniselife/nestos-plugin-plex",
-    "icon": "https://raw.githubusercontent.com/moderniselife/nestos-plugins/main/icons/plex.png",
+    "icon": "https://raw.githubusercontent.com/moderniselife/nestos/nestos-plugins/main/icons/plex.png",
     "category": "Media",
     "tags": ["media", "streaming", "docker"]
   }

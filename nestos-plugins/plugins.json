@@ -1,0 +1,24 @@
+[
+  {
+    "id": "vaultwarden",
+    "name": "Vaultwarden",
+    "description": "Unofficial Bitwarden compatible server written in Rust",
+    "version": "1.0.0",
+    "author": "NestOS Community",
+    "repository": "https://github.com/moderniselife/nestos-plugin-vaultwarden",
+    "icon": "https://raw.githubusercontent.com/moderniselife/nestos-plugins/main/icons/vaultwarden.png",
+    "category": "Security",
+    "tags": ["password-manager", "security", "docker"]
+  },
+  {
+    "id": "plex",
+    "name": "Plex Media Server",
+    "description": "Stream your media collection to any device, anywhere",
+    "version": "1.0.0",
+    "author": "NestOS Community",
+    "repository": "https://github.com/moderniselife/nestos-plugin-plex",
+    "icon": "https://raw.githubusercontent.com/moderniselife/nestos-plugins/main/icons/plex.png",
+    "category": "Media",
+    "tags": ["media", "streaming", "docker"]
+  }
+]

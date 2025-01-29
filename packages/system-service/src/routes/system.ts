@@ -143,6 +143,33 @@ const systemSettingsSchema = {
   }
 };
 
+// const pluginsSchema = {
+//   response: {
+//     200: {
+//       type: 'array',
+//       items: {
+//         type: 'object',
+//         properties: {
+//           id: { type: 'string' },
+//           name: { type: 'string' },
+//           description: { type: 'string' },
+//           version: { type: 'string' },
+//           author: { type: 'string' },
+//           repository: { type: 'string' },
+//           icon: { type: 'string' },
+//           installed: { type: 'boolean' },
+//           category: { type: 'string' },
+//           tags: {
+//             type: 'array',
+//             items: { type: 'string' }
+//           }
+//         }
+//       }
+//     }
+//   }
+// };
+
+
 // Add near the top with other imports and helpers
 const runPrivilegedCommand = async (command: string): Promise<{ stdout: string; stderr: string }> => {
   // Check if running in container or as root
@@ -981,6 +1008,113 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       };
     } catch (error) {
       throw new Error(`Backup failed: ${error}`);
+    }
+  });
+
+  fastify.get('/plugins', async () => {
+    try {
+      const response = await axios.get('https://raw.githubusercontent.com/moderniselife/nestos/main/nestos-plugins/plugins.json');
+      const plugins = response.data;
+
+      // Check which plugins are installed and add their config components
+      for (const plugin of plugins) {
+        try {
+          const configPath = path.join(process.cwd(), 'plugins', plugin.id, 'ui', 'config.tsx');
+          const configExists = await fs.access(configPath).then(() => true).catch(() => false);
+
+          if (configExists) {
+            plugin.installed = true;
+            const configCode = await fs.readFile(configPath, 'utf-8');
+            plugin.configComponent = Buffer.from(configCode).toString('base64');
+          } else {
+            plugin.installed = false;
+            plugin.configComponent = undefined;
+          }
+        } catch {
+          plugin.installed = false;
+          plugin.configComponent = undefined;
+        }
+      }
+
+      return plugins;
+    } catch (error) {
+      throw new Error(`Failed to fetch plugins: ${error}`);
+    }
+  });
+
+  fastify.post('/plugins/:id/install', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    try {
+      // Fetch plugin info and config component
+      const response = await axios.get('https://raw.githubusercontent.com/moderniselife/nestos/main/nestos-plugins/plugins.json');
+      const plugin = response.data.find((p: any) => p.id === id);
+
+      if (!plugin) {
+        reply.code(404);
+        throw new Error('Plugin not found');
+      }
+
+      // Create plugins directory
+      const pluginsDir = path.join(process.cwd(), 'plugins');
+      await fs.mkdir(pluginsDir, { recursive: true });
+
+      // Clone plugin repository
+      await execAsync(`git clone ${plugin.repository} ${path.join(pluginsDir, id)}`);
+
+      // Read and store the configuration component
+      try {
+        const configPath = path.join(pluginsDir, id, 'ui', 'config.tsx');
+        const configCode = await fs.readFile(configPath, 'utf-8');
+        plugin.configComponent = Buffer.from(configCode).toString('base64');
+      } catch (error) {
+        console.log('No configuration component found for plugin:', id);
+      }
+
+      // Run install script if it exists
+      const installScript = path.join(pluginsDir, id, 'install.sh');
+      try {
+        await fs.access(installScript);
+        await runPrivilegedCommand(`bash ${installScript}`);
+      } catch {
+        // No install script, skip
+      }
+
+      return { status: 'success', message: 'Plugin installed successfully' };
+    } catch (error) {
+      throw new Error(`Failed to install plugin: ${error}`);
+    }
+  });
+
+  fastify.delete('/plugins/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    try {
+      const pluginDir = path.join(process.cwd(), 'plugins', id);
+
+      // Check if plugin exists
+      try {
+        await fs.access(pluginDir);
+      } catch {
+        reply.code(404);
+        throw new Error('Plugin not installed');
+      }
+
+      // Run uninstall script if it exists
+      const uninstallScript = path.join(pluginDir, 'uninstall.sh');
+      try {
+        await fs.access(uninstallScript);
+        await runPrivilegedCommand(`bash ${uninstallScript}`);
+      } catch {
+        // No uninstall script, skip
+      }
+
+      // Remove plugin directory
+      await fs.rm(pluginDir, { recursive: true, force: true });
+
+      return { status: 'success', message: 'Plugin uninstalled successfully' };
+    } catch (error) {
+      throw new Error(`Failed to uninstall plugin: ${error}`);
     }
   });
 };

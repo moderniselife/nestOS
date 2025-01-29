@@ -68,3 +68,4 @@ packages/iso-builder/chroot/
 *.cert
 *.csr
 backups
+packages/iso-builder/output/nestos

@@ -7,11 +7,11 @@ import {
   Button,
   Card,
   CardContent,
-  Typography
+  Typography,
 } from '@mui/material';
 
-export default function VaultwardenConfig() {
-  const [config, setConfig] = useState({
+function PluginConfig() {
+  const [config, setConfig] = React.useState({
     domain: '',
     allowSignups: false,
     adminToken: '',
@@ -20,7 +20,7 @@ export default function VaultwardenConfig() {
     smtpFrom: '',
     smtpPort: '587',
     smtpUsername: '',
-    smtpPassword: ''
+    smtpPassword: '',
   });
 
   const handleSave = async () => {
@@ -28,7 +28,7 @@ export default function VaultwardenConfig() {
       await fetch('/api/plugins/vaultwarden/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+        body: JSON.stringify(config),
       });
       // Restart container to apply changes
       await fetch('/api/plugins/vaultwarden/restart', { method: 'POST' });
@@ -72,6 +72,40 @@ export default function VaultwardenConfig() {
             label="Port"
             value={config.port}
             onChange={(e) => setConfig({ ...config, port: e.target.value })}
+          />
+          <Typography variant="subtitle2" sx={{ mt: 2 }}>
+            Email Configuration (Optional)
+          </Typography>
+          <TextField
+            fullWidth
+            label="SMTP Host"
+            value={config.smtpHost}
+            onChange={(e) => setConfig({ ...config, smtpHost: e.target.value })}
+          />
+          <TextField
+            fullWidth
+            label="SMTP From"
+            value={config.smtpFrom}
+            onChange={(e) => setConfig({ ...config, smtpFrom: e.target.value })}
+          />
+          <TextField
+            fullWidth
+            label="SMTP Port"
+            value={config.smtpPort}
+            onChange={(e) => setConfig({ ...config, smtpPort: e.target.value })}
+          />
+          <TextField
+            fullWidth
+            label="SMTP Username"
+            value={config.smtpUsername}
+            onChange={(e) => setConfig({ ...config, smtpUsername: e.target.value })}
+          />
+          <TextField
+            fullWidth
+            label="SMTP Password"
+            value={config.smtpPassword}
+            onChange={(e) => setConfig({ ...config, smtpPassword: e.target.value })}
+            type="password"
           />
           <Button variant="contained" onClick={handleSave}>
             Save Configuration

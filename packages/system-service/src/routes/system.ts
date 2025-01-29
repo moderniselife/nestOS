@@ -1016,7 +1016,6 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       const response = await axios.get('https://raw.githubusercontent.com/moderniselife/nestos/main/nestos-plugins/plugins.json');
       const plugins = response.data;
 
-      // Check which plugins are installed and add their config components
       for (const plugin of plugins) {
         try {
           const configPath = path.join(process.cwd(), 'plugins', plugin.id, 'ui', 'config.tsx');
@@ -1025,7 +1024,12 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
           if (configExists) {
             plugin.installed = true;
             const configCode = await fs.readFile(configPath, 'utf-8');
-            plugin.configComponent = Buffer.from(configCode).toString('base64');
+            // Extract just the component definition without imports
+            const componentCode = configCode
+              .replace(/import[^;]+;/g, '') // Remove import statements
+              .replace(/export\s+default\s+/g, '') // Remove export default
+              .trim();
+            plugin.configComponent = componentCode;
           } else {
             plugin.installed = false;
             plugin.configComponent = undefined;

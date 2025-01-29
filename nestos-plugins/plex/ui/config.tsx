@@ -1,21 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  TextField,
-  Button,
-  Card,
-  CardContent,
-  Typography,
-  Alert
-} from '@mui/material';
+import { Box, TextField, Button, Card, CardContent, Typography, Alert } from '@mui/material';
 
-export default function PlexConfig() {
-  const [config, setConfig] = useState({
+function PluginConfig() {
+  const [config, setConfig] = React.useState({
     timezone: '',
     plexClaim: '',
     configDir: '/var/lib/nestos/plugins/plex',
     transcodeDir: '/var/lib/nestos/plugins/plex',
-    mediaDir: '/var/lib/nestos/plugins/plex/media'
+    mediaDir: '/var/lib/nestos/plugins/plex/media',
   });
 
   const handleSave = async () => {
@@ -23,10 +15,8 @@ export default function PlexConfig() {
       await fetch('/api/plugins/plex/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+        body: JSON.stringify(config),
       });
-      // Restart container to apply changes
-      await fetch('/api/plugins/plex/restart', { method: 'POST' });
     } catch (error) {
       console.error('Failed to save configuration:', error);
     }
@@ -39,7 +29,10 @@ export default function PlexConfig() {
           Plex Media Server Configuration
         </Typography>
         <Alert severity="info" sx={{ mb: 2 }}>
-          Get your claim token from <a href="https://www.plex.tv/claim" target="_blank" rel="noopener">plex.tv/claim</a>
+          Get your claim token from{' '}
+          <a href="https://www.plex.tv/claim" target="_blank" rel="noopener">
+            plex.tv/claim
+          </a>
         </Alert>
         <Box component="form" sx={{ '& > :not(style)': { m: 1 } }}>
           <TextField

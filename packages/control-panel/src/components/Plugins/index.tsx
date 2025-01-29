@@ -15,6 +15,9 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  Alert,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -37,6 +40,45 @@ interface Plugin {
   tags: string[];
   configComponent?: string; // Base64 encoded React component code
 }
+
+// Add this helper function at the top of the file
+const createConfigComponent = (configCode: string) => {
+  return React.lazy(() => {
+    const componentCode = `
+      const {
+        React,
+        Box,
+        TextField,
+        Button,
+        Card,
+        CardContent,
+        Typography,
+        Alert,
+        FormControlLabel,
+        Switch
+      } = arguments[0];
+      
+      ${configCode}
+      
+      return PluginConfig;
+    `;
+
+    const component = new Function(componentCode)({
+      React,
+      Box,
+      TextField,
+      Button,
+      Card,
+      CardContent,
+      Typography,
+      Alert,
+      FormControlLabel,
+      Switch,
+    });
+
+    return Promise.resolve({ default: component });
+  });
+};
 
 export default function Plugins(): JSX.Element {
   const [search, setSearch] = useState('');
@@ -99,14 +141,9 @@ export default function Plugins(): JSX.Element {
       plugin.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
   );
 
+  // Replace the existing dynamic import with:
   const PluginConfig = configPlugin?.configComponent
-    ? React.lazy(() => {
-        const component = new Function(
-          'React',
-          `return ${atob(configPlugin.configComponent ?? '')}`
-        )(React);
-        return Promise.resolve({ default: component });
-      })
+    ? createConfigComponent(configPlugin.configComponent)
     : null;
 
   return (
@@ -140,7 +177,13 @@ export default function Plugins(): JSX.Element {
           {filteredPlugins?.map((plugin) => (
             <Grid item xs={12} sm={6} md={4} key={plugin.id}>
               <Card>
-                <CardMedia component="img" height="140" image={plugin.icon} alt={plugin.name} />
+                <CardMedia
+                  component="img"
+                  height="140"
+                  image={plugin.icon}
+                  alt={plugin.name}
+                  sx={{ minHeight: '350px' }}
+                />
                 <CardContent>
                   <Typography gutterBottom variant="h6" component="div">
                     {plugin.name}

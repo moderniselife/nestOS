@@ -6,14 +6,23 @@ NestOS is designed to make home server management simple and beautiful. It provi
 
 ## ✨ Features
 
+Current Features:
 - 🎨 Modern, intuitive web interface
-- 💾 Smart storage management
-- 🐳 Docker container orchestration
-- 🌐 Network service management
+- 🚀 Beautiful Nest Launcher with frosted-glass design
+- 🔌 Powerful plugin system for easy app installation
+- 🐳 Advanced Docker container management
+- 🔍 Docker Hub and GitHub Container Registry integration
+- 💾 Smart storage management and monitoring
+- 🌐 Network service configuration
+- 🔒 Security-focused design with privilege separation
+- 🔄 Live system updates and version control
 - 📊 Real-time system monitoring
-- 🔒 Security-focused design
-- 🔄 Live system updates
 - 📱 Mobile-responsive interface
+
+Coming Soon:
+- 👥 Multi-user support with personalized experiences
+- 🌙 Dynamic day/night theming
+- 🔐 Enhanced security features
 
 ## 📸 Screenshots
 

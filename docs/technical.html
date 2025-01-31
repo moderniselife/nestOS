@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -78,10 +79,25 @@
             font-weight: bold;
         }
 
-        .get { background: var(--primary); color: white; }
-        .post { background: var(--primary-dark); color: white; }
-        .put { background: #F59E0B; color: white; }
-        .delete { background: #EF4444; color: white; }
+        .get {
+            background: var(--primary);
+            color: white;
+        }
+
+        .post {
+            background: var(--primary-dark);
+            color: white;
+        }
+
+        .put {
+            background: #F59E0B;
+            color: white;
+        }
+
+        .delete {
+            background: #EF4444;
+            color: white;
+        }
 
         h1 {
             font-size: 2.5rem;
@@ -147,6 +163,7 @@
             .container {
                 grid-template-columns: 1fr;
             }
+
             .sidebar {
                 position: static;
                 height: auto;
@@ -154,6 +171,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <nav class="sidebar">
@@ -174,67 +192,171 @@
 
         <main class="content">
             <h1>NestOS Technical Documentation</h1>
-            
+
             <section id="architecture">
                 <h2>System Architecture</h2>
                 <p>NestOS is built on Debian (bookworm) with the following core components:</p>
                 <ul>
-                    <li>System Service (Node.js backend)</li>
-                    <li>Control Panel (Web interface)</li>
-                    <li>Docker Container Runtime</li>
+                    <li>System Service (Node.js backend with privilege separation)</li>
+                    <li>Control Panel (React-based web interface)</li>
+                    <li>Nest Launcher (Modern application launcher with frosted-glass UI)</li>
+                    <li>Plugin System (Docker-based application management)</li>
                     <li>Storage Management System</li>
+                    <li>Container Management System</li>
                 </ul>
 
-                <h3>Core Services</h3>
+                <h3>Security Features</h3>
                 <ul>
-                    <li>nestos-system.service</li>
-                    <li>nestos-control-panel.service</li>
-                    <li>docker.service</li>
-                    <li>smbd.service</li>
-                    <li>nfs-kernel-server.service</li>
+                    <li>Privilege Separation</li>
+                    <li>Secure System Updates</li>
+                    <li>Docker Container Isolation</li>
+                    <li>API Security Controls</li>
+                </ul>
+
+                <h3>Planned Features</h3>
+                <ul>
+                    <li>Multi-user Authentication System</li>
+                    <li>Role-based Access Control</li>
+                    <li>Dynamic Theme Support</li>
+                    <li>Enhanced Backup Solutions</li>
                 </ul>
             </section>
 
             <section id="api">
                 <h2>API Reference</h2>
-                
+
+                <h3>System</h3>
                 <div class="api-endpoint">
                     <span class="method get">GET</span>
-                    <code>/api/v1/system/status</code>
-                    <p>Get system status including CPU, memory, and storage metrics</p>
-                    
+                    <code>/api/system/info</code>
+                    <p>Get detailed system information including CPU, memory, and OS details</p>
                     <div class="api-response">
                         <strong>Response:</strong>
                         <pre><code>{
   "cpu": {
-    "usage": 45.2,
-    "temperature": 52
+    "manufacturer": "Intel",
+    "brand": "Intel(R) Core(TM) i7-10700K",
+    "cores": 8,
+    "physicalCores": 8,
+    "speed": 3.8,
+    "temperature": 45
   },
   "memory": {
-    "total": 16384,
-    "used": 8192,
-    "free": 8192
+    "total": 32212254720,
+    "free": 16106127360,
+    "used": 16106127360
   },
-  "storage": {
-    "pools": [...],
-    "volumes": [...]
+  "os": {
+    "platform": "linux",
+    "distro": "Debian",
+    "release": "12",
+    "hostname": "nestos"
   }
 }</code></pre>
                     </div>
                 </div>
 
                 <div class="api-endpoint">
-                    <span class="method post">POST</span>
-                    <code>/api/v1/storage/volumes</code>
-                    <p>Create a new storage volume</p>
-                    
-                    <div class="api-params">
-                        <strong>Parameters:</strong>
+                    <span class="method get">GET</span>
+                    <code>/api/system/plugins</code>
+                    <p>List all installed plugins and their status</p>
+                    <div class="api-response">
+                        <strong>Response:</strong>
+                        <pre><code>[{
+  "id": "nextcloud",
+  "name": "Nextcloud",
+  "version": "25.0.3",
+  "status": "running",
+  "url": "http://localhost:8080",
+  "icon": "/icons/nextcloud.png"
+}]</code></pre>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <span class="method get">GET</span>
+                    <code>/api/system/updates</code>
+                    <p>Check for available system and NestOS updates</p>
+                </div>
+
+                <h3>Storage</h3>
+                <div class="api-endpoint">
+                    <span class="method get">GET</span>
+                    <code>/api/storage/devices</code>
+                    <p>List all storage devices with SMART data and filesystem information</p>
+                    <div class="api-response">
+                        <strong>Response:</strong>
                         <pre><code>{
-  "name": "string",
-  "size": "number",
-  "raid_level": "number",
-  "drives": "string[]"
+  "devices": [{
+    "name": "sda",
+    "identifier": "/dev/sda",
+    "type": "disk",
+    "fsType": "ext4",
+    "mount": "/",
+    "size": 1000204886016,
+    "smart": {
+      "health": "OK",
+      "temperature": 35
+    },
+    "filesystem": {
+      "size": 1000204886016,
+      "used": 421827387392,
+      "available": 578377498624,
+      "use": 42.1
+    }
+  }]
+}</code></pre>
+                    </div>
+                </div>
+
+                <h3>Docker</h3>
+                <div class="api-endpoint">
+                    <span class="method get">GET</span>
+                    <code>/api/docker/containers</code>
+                    <p>List all Docker containers</p>
+                    <div class="api-response">
+                        <strong>Response:</strong>
+                        <pre><code>[{
+  "Id": "abc123...",
+  "Names": ["/nextcloud"],
+  "Image": "nextcloud:latest",
+  "State": "running",
+  "Status": "Up 2 days",
+  "Ports": [{"PrivatePort": 80, "PublicPort": 8080}],
+  "Created": 1677721600
+}]</code></pre>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <span class="method post">POST</span>
+                    <code>/api/network/test</code>
+                    <p>Run network speed and latency tests</p>
+                    <div class="api-response">
+                        <strong>Response:</strong>
+                        <pre><code>{
+  "ping": {
+    "host": "8.8.8.8",
+    "latency": 15.4,
+    "packetLoss": 0
+  },
+  "speedtest": {
+    "download": 100.5,
+    "upload": 40.2,
+    "unit": "Mbps"
+  }
+}</code></pre>
+                    </div>
+                </div>
+
+                <div class="api-endpoint">
+                    <span class="method get">GET</span>
+                    <code>/api/appearance/appearance</code>
+                    <p>Get current appearance settings</p>
+                    <div class="api-response">
+                        <strong>Response:</strong>
+                        <pre><code>{
+  "background": "mountain-night"
 }</code></pre>
                     </div>
                 </div>
@@ -242,7 +364,7 @@
 
             <section id="troubleshooting">
                 <h2>Troubleshooting Guide</h2>
-                
+
                 <div class="troubleshooting-item">
                     <h3>System Won't Boot</h3>
                     <p>Common causes:</p>
@@ -279,6 +401,25 @@
                     </div>
                 </div>
             </section>
+            <section id="container-management">
+                <h2>Container Management</h2>
+                <ul>
+                    <li>Docker Container Management
+                        <ul>
+                            <li>Real-time container monitoring</li>
+                            <li>Container logs and statistics</li>
+                            <li>Integrated image search across:
+                                <ul>
+                                    <li>Docker Hub Registry</li>
+                                    <li>GitHub Container Registry (GHCR)</li>
+                                </ul>
+                            </li>
+                            <li>Container creation and configuration</li>
+                            <li>Volume and network management</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
         </main>
     </div>
 
@@ -286,11 +427,11 @@
         // Search functionality
         const searchInput = document.getElementById('searchInput');
         const content = document.querySelector('.content');
-        
+
         searchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase();
             const sections = content.getElementsByTagName('section');
-            
+
             Array.from(sections).forEach(section => {
                 const text = section.textContent.toLowerCase();
                 section.style.display = text.includes(searchTerm) ? 'block' : 'none';
@@ -298,4 +439,5 @@
         });
     </script>
 </body>
+
 </html>

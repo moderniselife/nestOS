@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:control-panel\" \"npm run dev:system-service\"",
+    "dev": "node scripts/check-sudo.js && concurrently \"npm run dev:control-panel\" \"npm run dev:system-service\"",
     "dev:control-panel": "cd packages/control-panel && npm run dev",
     "dev:system-service": "cd packages/system-service && npm run dev",
     "build": "turbo run build --filter=!./packages/iso-builder",

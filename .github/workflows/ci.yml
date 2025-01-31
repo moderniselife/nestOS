@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for git diff
+          fetch-depth: 0 # Fetch all history for git diff
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -80,7 +80,7 @@ jobs:
             echo "Checking $tool..."
             which $tool || exit 1
           done
-          
+
           echo "Tool versions:"
           echo "debootstrap version:" && debootstrap --version || true
           echo "mksquashfs version:" && mksquashfs -version || true
@@ -95,59 +95,59 @@ jobs:
           ls -la packages/control-panel/dist
           ls -la packages/system-service/dist
 
-      - name: Build ISO
-        run: |
-          echo "Starting ISO build process..."
-          cd packages/iso-builder
-          
-          # Create build directory with proper permissions and structure
-          sudo mkdir -p build/{iso/boot/grub,iso/live,chroot}
-          sudo chmod -R 777 build
-          
-          # Verify debootstrap setup
-          echo "Verifying debootstrap setup..."
-          sudo debootstrap --version
-          sudo ls -l /usr/share/debootstrap/scripts/
-          
-          # Run build with debug output and preserve environment
-          sudo --preserve-env=PATH,NODE_PATH,npm_config_prefix DEBUG=* npm run build:iso || {
-            echo "ISO build failed. Checking environment..."
-            echo "Full directory structure:"
-            sudo tree -a build/
-            
-            echo "Checking file permissions:"
-            sudo ls -la build/
-            sudo ls -la build/iso/
-            sudo ls -la build/iso/boot/
-            
-            echo "Checking if required tools are installed:"
-            which debootstrap squashfs-tools xorriso grub-mkrescue
-            
-            echo "Checking system resources:"
-            df -h
-            free -h
-            
-            echo "Checking debootstrap logs:"
-            sudo cat /var/log/bootstrap.log || true
-            
-            echo "System logs:"
-            sudo journalctl -n 100
-            
-            echo "Process logs:"
-            ps aux | grep build
-            exit 1
-          }
-          
-          echo "Build completed. Full directory structure:"
-          sudo tree -a build/
-          
-          echo "ISO build completed. Checking ISO file..."
-          sudo ls -la build/nestos.iso
-          echo "ISO file details:"
-          sudo file build/nestos.iso
-          
-          echo "ISO contents:"
-          sudo xorriso -indev build/nestos.iso -list-extents
+      # - name: Build ISO
+      #   run: |
+      #     echo "Starting ISO build process..."
+      #     cd packages/iso-builder
+
+      #     # Create build directory with proper permissions and structure
+      #     sudo mkdir -p build/{iso/boot/grub,iso/live,chroot}
+      #     sudo chmod -R 777 build
+
+      #     # Verify debootstrap setup
+      #     echo "Verifying debootstrap setup..."
+      #     sudo debootstrap --version
+      #     sudo ls -l /usr/share/debootstrap/scripts/
+
+      #     # Run build with debug output and preserve environment
+      #     sudo --preserve-env=PATH,NODE_PATH,npm_config_prefix DEBUG=* npm run build:iso || {
+      #       echo "ISO build failed. Checking environment..."
+      #       echo "Full directory structure:"
+      #       sudo tree -a build/
+
+      #       echo "Checking file permissions:"
+      #       sudo ls -la build/
+      #       sudo ls -la build/iso/
+      #       sudo ls -la build/iso/boot/
+
+      #       echo "Checking if required tools are installed:"
+      #       which debootstrap squashfs-tools xorriso grub-mkrescue
+
+      #       echo "Checking system resources:"
+      #       df -h
+      #       free -h
+
+      #       echo "Checking debootstrap logs:"
+      #       sudo cat /var/log/bootstrap.log || true
+
+      #       echo "System logs:"
+      #       sudo journalctl -n 100
+
+      #       echo "Process logs:"
+      #       ps aux | grep build
+      #       exit 1
+      #     }
+
+      #     echo "Build completed. Full directory structure:"
+      #     sudo tree -a build/
+
+      #     echo "ISO build completed. Checking ISO file..."
+      #     sudo ls -la build/nestos.iso
+      #     echo "ISO file details:"
+      #     sudo file build/nestos.iso
+
+      #     echo "ISO contents:"
+      #     sudo xorriso -indev build/nestos.iso -list-extents
 
       - name: Make version script executable
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -169,12 +169,12 @@ jobs:
           git add "packages/*/package.json"
           git diff --quiet && git diff --staged --quiet || (git commit -m "chore: bump version to ${{ steps.version.outputs.version }}" && git push)
 
-      - name: Upload ISO artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nestos-iso
-          path: packages/iso-builder/build/nestos.iso
-          retention-days: 7
+      # - name: Upload ISO artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: nestos-iso
+      #     path: packages/iso-builder/build/nestos.iso
+      #     retention-days: 7
 
       - name: Create Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -182,9 +182,9 @@ jobs:
         with:
           name: NestOS v${{ steps.version.outputs.version }}
           tag_name: v${{ steps.version.outputs.version }}
-          files: packages/iso-builder/build/nestos.iso
+          # files: packages/iso-builder/build/nestos.iso
           draft: false
-          prerelease: false
+          prerelease: true
           generate_release_notes: true
 
   docker:
@@ -194,7 +194,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for git diff
+          fetch-depth: 0 # Fetch all history for git diff
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

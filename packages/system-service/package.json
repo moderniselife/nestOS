@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node -e \"if (process.getuid() !== 0 && !process.env.DOCKER) { require('child_process').execSync('sudo -E tsx watch src/start-dev.ts', {stdio: 'inherit'}); } else { require('child_process').execSync('tsx watch src/start-dev.ts', {stdio: 'inherit'}); }\"",
+    "dev": "node -e \"const { spawnSync } = require('child_process'); if (process.getuid() !== 0 && !process.env.DOCKER) { spawnSync('sudo', ['tsx', 'watch', 'src/start-dev.ts'], { stdio: 'inherit' }); } else { spawnSync('tsx', ['watch', 'src/start-dev.ts'], { stdio: 'inherit' }); }\"",
+    "start": "node -e \"const { spawnSync } = require('child_process'); if (process.getuid() !== 0 && !process.env.DOCKER) { spawnSync('sudo', ['node', 'dist/index.js'], { stdio: 'inherit' }); } else { spawnSync('node', ['dist/index.js'], { stdio: 'inherit' }); }\"",
     "build": "tsc",
-    "start": "node -e \"if (process.getuid() !== 0 && !process.env.DOCKER) { require('child_process').execSync('sudo -E node dist/index.js', {stdio: 'inherit'}); } else { require('child_process').execSync('node dist/index.js', {stdio: 'inherit'}); }\"",
     "lint": "eslint src --ext ts",
     "type-check": "tsc --noEmit"
   },

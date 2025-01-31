@@ -31,12 +31,15 @@ print_status "Updating system packages"
 apt-get update
 apt-get upgrade -y
 
+# Install Node.js 20
+print_status "Setting up Node.js 20 repository"
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+
 # Install required packages
 print_status "Installing required packages"
 apt-get install -y \
     docker.io \
     nodejs \
-    npm \
     curl \
     wget \
     git \
@@ -47,47 +50,42 @@ apt-get install -y \
     network-manager \
     openssh-server
 
+# Verify Node.js version
+NODE_VERSION=$(node --version)
+if [[ ! $NODE_VERSION =~ ^v20 ]]; then
+    echo -e "${RED}Node.js 20 installation failed. Got version: $NODE_VERSION${NC}"
+    exit 1
+fi
+
 # Clone NestOS repository
 print_status "Cloning NestOS repository"
-git clone https://github.com/moderniselife/nestos.git /tmp/nestos
-cd /tmp/nestos
+mkdir -p /opt/nestos
+git clone https://github.com/moderniselife/nestos.git /opt/nestos
 
 # Build components
 print_status "Building NestOS components"
+cd /opt/nestos
 npm install
 npm run build
-
-# Install NestOS components
-print_status "Creating NestOS directories"
-mkdir -p /opt/nestos/{system-service,control-panel}
-
-# Copy built components
-print_status "Installing system service"
-cp -r packages/system-service/dist/* /opt/nestos/system-service/
-print_status "Installing control panel"
-cp -r packages/control-panel/dist/* /opt/nestos/control-panel/
-
-# Clean up build files
-rm -rf /tmp/nestos
 
 # Setup Docker
 print_status "Setting up Docker"
 systemctl enable docker
 systemctl start docker
 
-# Create systemd service files
-print_status "Creating systemd service files"
+# Create systemd service file
+print_status "Creating systemd service file"
 
-cat > /etc/systemd/system/nestos-system.service << EOL
+cat > /etc/systemd/system/nestos.service << EOL
 [Unit]
-Description=NestOS System Service
+Description=NestOS Service
 After=network.target
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/nestos/system-service
-ExecStart=/usr/bin/node /opt/nestos/system-service/index.js
+WorkingDirectory=/opt/nestos
+ExecStart=/usr/bin/npm run start
 Restart=always
 RestartSec=10
 
@@ -95,30 +93,11 @@ RestartSec=10
 WantedBy=multi-user.target
 EOL
 
-cat > /etc/systemd/system/nestos-control-panel.service << EOL
-[Unit]
-Description=NestOS Control Panel
-After=network.target nestos-system.service
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/nestos/control-panel
-ExecStart=/usr/bin/node /opt/nestos/control-panel/index.js
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOL
-
-# Enable and start services
-print_status "Enabling and starting NestOS services"
+# Enable and start service
+print_status "Enabling and starting NestOS service"
 systemctl daemon-reload
-systemctl enable nestos-system.service
-systemctl enable nestos-control-panel.service
-systemctl start nestos-system.service
-systemctl start nestos-control-panel.service
+systemctl enable nestos.service
+systemctl start nestos.service
 
 # Configure network
 print_status "Configuring network"

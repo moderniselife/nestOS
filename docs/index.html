@@ -608,12 +608,14 @@
             color: #fff;
             font-family: 'Fira Code', monospace;
             position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
         }
 
         .copy-button {
-            position: absolute;
-            top: 3.5rem;
-            right: 1rem;
+            position: static;
             background: transparent;
             border: none;
             color: rgba(255, 255, 255, 0.5);
@@ -621,6 +623,7 @@
             padding: 0.5rem;
             border-radius: 4px;
             transition: all 0.2s ease;
+            flex-shrink: 0;
         }
 
         .copy-button:hover {
@@ -679,14 +682,15 @@
                             <span class="control maximize"></span>
                         </div>
                     </div>
-                    <pre
-                        class="install-code"><code>curl -fsSL https://raw.githubusercontent.com/nestOS/nasos/main/docs/install.sh | sudo bash</code></pre>
-                    <button class="copy-button" onclick="copyInstallCommand()">
-                        <svg width="16" height="16" viewBox="0 0 24 24">
-                            <path fill="currentColor"
-                                d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2z" />
-                        </svg>
-                    </button>
+                    <div class="install-code">
+                        <code>curl -fsSL https://raw.githubusercontent.com/nestOS/nasos/main/docs/install.sh | sudo bash</code>
+                        <button class="copy-button" onclick="copyInstallCommand()">
+                            <svg width="16" height="16" viewBox="0 0 24 24">
+                                <path fill="currentColor"
+                                    d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <a href="https://github.com/moderniselife/nestos" class="cta">Get Started</a>

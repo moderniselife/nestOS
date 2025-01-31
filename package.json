@@ -11,7 +11,7 @@
     "dev": "concurrently \"npm run dev:control-panel\" \"npm run dev:system-service\"",
     "dev:control-panel": "cd packages/control-panel && npm run dev",
     "dev:system-service": "cd packages/system-service && npm run dev",
-    "build": "turbo run build",
+    "build": "turbo run build --filter=!./packages/iso-builder",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "clean": "turbo run clean",

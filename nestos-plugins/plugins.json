@@ -20,5 +20,16 @@
     "icon": "https://raw.githubusercontent.com/moderniselife/nestos/main/nestos-plugins/icons/plex.png",
     "category": "Media",
     "tags": ["media", "streaming", "docker"]
+  },
+  {
+    "id": "cloudflared-web",
+    "name": "Cloudflare Tunnel Manager",
+    "description": "Web UI for managing Cloudflare tunnels with easy configuration",
+    "version": "1.0.0",
+    "author": "NestOS Community",
+    "repository": "https://github.com/moderniselife/nestos-plugin-cloudflared-web",
+    "icon": "https://raw.githubusercontent.com/moderniselife/nestos/main/nestos-plugins/icons/cloudflared.png",
+    "category": "Networking",
+    "tags": ["cloudflare", "tunnel", "proxy", "networking", "docker"]
   }
 ]

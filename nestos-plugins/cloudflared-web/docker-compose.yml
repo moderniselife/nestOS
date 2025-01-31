@@ -1,0 +1,26 @@
+version: '3'
+services:
+  cloudflared-web:
+    image: wisdomsky/cloudflared-web:latest
+    container_name: cloudflared-web
+    restart: unless-stopped
+    environment:
+      - WEB_PORT=${WEB_PORT:-3001}
+      - CLOUDFLARED_PORT=${CLOUDFLARED_PORT:-3002}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ENABLE_HTTPS=${ENABLE_HTTPS:-false}
+      - HTTPS_PORT=${HTTPS_PORT:-3003}
+    volumes:
+      - ${DATA_DIR:-/var/lib/nestos/plugins/cloudflared-web}/data:/app/data
+      - ${DATA_DIR:-/var/lib/nestos/plugins/cloudflared-web}/certs:/root/.cloudflared
+    ports:
+      - "${WEB_PORT:-3001}:${WEB_PORT:-3001}"
+      - "${CLOUDFLARED_PORT:-3002}:${CLOUDFLARED_PORT:-3002}"
+      - "${HTTPS_PORT:-3003}:${HTTPS_PORT:-3003}"
+    networks:
+      - nestos
+
+networks:
+  nestos:
+    external: true

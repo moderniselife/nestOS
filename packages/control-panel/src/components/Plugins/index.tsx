@@ -42,12 +42,34 @@ interface Plugin {
   configComponent?: string; // Base64 encoded React component code
 }
 
+const ConfigTextField = React.memo(({ label, value, onChange, type = 'text', helperText = '' }) => {
+  const [localValue, setLocalValue] = React.useState(value);
+
+  React.useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  return (
+    <TextField
+      fullWidth
+      label={label}
+      value={localValue || ''}
+      onChange={(e) => setLocalValue(e.target.value)}
+      onBlur={() => onChange?.(localValue)}
+      type={type}
+      helperText={helperText}
+      autoComplete="off"
+      inputProps={{ autoComplete: 'off' }}
+    />
+  );
+});
+
 // Add this helper function at the top of the file
-const createConfigComponent = (configCode: string) => {
+const createConfigComponent = (configCode: string, pluginId: string) => {
   return React.lazy(() => {
     // Create a babel-transformed version of the component
     const transformedCode = Babel.transform(configCode, {
-      presets: ['react'],  // Use the built-in 'react' preset instead of '@babel/preset-react'
+      presets: ['react'], // Use the built-in 'react' preset instead of '@babel/preset-react'
       filename: 'dynamic.tsx',
     }).code;
 
@@ -55,8 +77,11 @@ const createConfigComponent = (configCode: string) => {
     const createComponent = new Function(
       'React',
       'MaterialUI',
+      'ConfigTextField',
+      'apiUrl',
+      'pluginId',
       `
-      const { useState } = React;
+      const { useState, useEffect } = React;
       const {
         Box,
         TextField,
@@ -68,6 +93,8 @@ const createConfigComponent = (configCode: string) => {
         FormControlLabel,
         Switch
       } = MaterialUI;
+
+      const apiURL = \`\${apiUrl}/api/plugins/\${pluginId}\`;
       
       ${transformedCode}
       
@@ -75,17 +102,23 @@ const createConfigComponent = (configCode: string) => {
     `
     );
 
-    const component = createComponent(React, {
-      Box,
-      TextField,
-      Button,
-      Card,
-      CardContent,
-      Typography,
-      Alert,
-      FormControlLabel,
-      Switch,
-    });
+    const component = createComponent(
+      React,
+      {
+        Box,
+        TextField,
+        Button,
+        Card,
+        CardContent,
+        Typography,
+        Alert,
+        FormControlLabel,
+        Switch,
+      },
+      ConfigTextField,
+      apiUrl,
+      pluginId
+    );
 
     return Promise.resolve({ default: component });
   });
@@ -94,7 +127,15 @@ const createConfigComponent = (configCode: string) => {
 export default function Plugins(): JSX.Element {
   const [search, setSearch] = useState('');
   const [configPlugin, setConfigPlugin] = useState<Plugin | null>(null);
+  const [preInstallPlugin, setPreInstallPlugin] = useState<Plugin | null>(null);
+  const [configBeforeInstall, setConfigBeforeInstall] = useState<Record<string, any>>({});
   const queryClient = useQueryClient();
+
+  const checkRequiresConfig = async (pluginId: string) => {
+    const response = await fetch(`${apiUrl}/api/plugins/${pluginId}/requires-config`);
+    if (!response.ok) throw new Error('Failed to check plugin configuration');
+    return response.json();
+  };
 
   const { data: plugins, isLoading } = useQuery<Plugin[]>({
     queryKey: ['plugins'],
@@ -108,19 +149,80 @@ export default function Plugins(): JSX.Element {
   });
 
   const installMutation = useMutation({
-    mutationFn: async (pluginId: string) => {
+    mutationFn: async ({
+      pluginId,
+      config,
+    }: {
+      pluginId: string;
+      config?: Record<string, any>;
+    }) => {
       const response = await fetch(`${apiUrl}/api/system/plugins/${pluginId}/install`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ config }),
       });
-      if (!response.ok) {
-        throw new Error('Failed to install plugin');
-      }
+      if (!response.ok) throw new Error('Failed to install plugin');
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
+      setPreInstallPlugin(null);
+      setConfigBeforeInstall({});
     },
   });
+
+  const handleInstall = async (plugin: Plugin) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/plugins/${plugin.id}/requires-config`);
+      if (!response.ok) throw new Error('Failed to check plugin configuration');
+      const { requiresConfig, configComponent } = await response.json();
+
+      if (requiresConfig) {
+        setPreInstallPlugin({
+          ...plugin,
+          configComponent: configComponent,
+        });
+      } else {
+        installMutation.mutate({ pluginId: plugin.id });
+      }
+    } catch (error) {
+      console.error('Failed to check plugin configuration:', error);
+    }
+  };
+
+  // Add this dialog for pre-installation configuration
+  const PreInstallConfigDialog = () => (
+    <Dialog open={!!preInstallPlugin} onClose={() => setPreInstallPlugin(null)}>
+      <DialogTitle>
+        Configure {preInstallPlugin?.name}
+        <IconButton
+          onClick={() => setPreInstallPlugin(null)}
+          sx={{ position: 'absolute', right: 8, top: 8 }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>
+        {preInstallPlugin?.configComponent && (
+          <Suspense fallback={<CircularProgress />}>
+            {React.createElement(createConfigComponent(preInstallPlugin.configComponent), {
+              config: configBeforeInstall,
+              onChange: setConfigBeforeInstall,
+              onSave: () => {
+                installMutation.mutate({
+                  pluginId: preInstallPlugin.id,
+                  config: configBeforeInstall,
+                });
+              },
+              isPreInstall: true,
+            })}
+          </Suspense>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 
   const uninstallMutation = useMutation({
     mutationFn: async (pluginId: string) => {
@@ -154,7 +256,7 @@ export default function Plugins(): JSX.Element {
 
   // Replace the existing dynamic import with:
   const PluginConfig = configPlugin?.configComponent
-    ? createConfigComponent(configPlugin.configComponent)
+    ? createConfigComponent(configPlugin.configComponent, configPlugin.id)
     : null;
 
   return (
@@ -218,7 +320,7 @@ export default function Plugins(): JSX.Element {
                         if (plugin.installed) {
                           uninstallMutation.mutate(plugin.id);
                         } else {
-                          installMutation.mutate(plugin.id);
+                          handleInstall(plugin);
                         }
                       }}
                       disabled={installMutation.isPending || uninstallMutation.isPending}
@@ -264,6 +366,7 @@ export default function Plugins(): JSX.Element {
           )}
         </DialogContent>
       </Dialog>
+      <PreInstallConfigDialog />
     </Box>
   );
 }

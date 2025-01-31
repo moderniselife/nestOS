@@ -17,6 +17,6 @@ services:
     volumes:
       - ${DATA_DIR:-/var/lib/nestos/plugins/vaultwarden}/data:/data
     ports:
-      - "${PORT:-8100}:80"
+      - '${PORT:-8100}:80'
     networks:
       - nestos

@@ -3,7 +3,7 @@ import { Box, TextField, Button, Card, CardContent, Typography, Alert } from '@m
 const currentDomain = new URL(window.location.href);
 const apiURL = `http://${currentDomain.hostname}:3000/api/plugins/plex`;
 
-async function PluginConfig() {
+function PluginConfig() {
   var [config, setConfig] = React.useState({
     timezone: '',
     plexClaim: '',
@@ -16,7 +16,7 @@ async function PluginConfig() {
     try {
       const response = await fetch(`${apiURL}/config`);
       const data = await response.json();
-      config = data;
+      setConfig(data);
     } catch (error) {
       console.error('Failed to load configuration:', error);
     }
@@ -34,7 +34,9 @@ async function PluginConfig() {
     }
   };
 
-  await loadConfig();
+  useEffect(() => {
+    loadConfig();
+  }, []);
 
   return (
     <Card>
@@ -52,20 +54,20 @@ async function PluginConfig() {
           <TextField
             fullWidth
             label="Plex Claim Token"
-            value={config.plexClaim}
+            value={config?.plexClaim || ''}
             onChange={(e) => setConfig({ ...config, plexClaim: e.target.value })}
           />
           <TextField
             fullWidth
             label="Media Directory"
-            value={config.mediaDir}
+            value={config?.mediaDir || ''}
             onChange={(e) => setConfig({ ...config, mediaDir: e.target.value })}
             helperText="Directory containing your media files"
           />
           <TextField
             fullWidth
             label="Transcode Directory"
-            value={config.transcodeDir}
+            value={config?.transcodeDir || ''}
             onChange={(e) => setConfig({ ...config, transcodeDir: e.target.value })}
           />
           <Button variant="contained" onClick={handleSave}>

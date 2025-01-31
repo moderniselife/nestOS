@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import {
   Box,
   TextField,
@@ -10,49 +11,67 @@ import {
   Typography,
 } from '@mui/material';
 
-const currentDomain = new URL(window.location.href);
-const apiURL = `http://${currentDomain.hostname}:3000/api/plugins/vaultwarden`;
+function PluginConfig({ config: initialConfig, onChange, onSave, isPreInstall = false }) {
+  var [config, setConfig] = useState(
+    initialConfig || {
+      DOMAIN: '',
+      ALLOW_SIGNUPS: false,
+      ADMIN_TOKEN: '',
+      PORT: '8100',
+      SMTP_HOST: '',
+      SMTP_FROM: '',
+      USE_SENDMAIL: false,
+      SMTP_PORT: '587',
+      SMTP_USERNAME: '',
+      SMTP_PASSWORD: '',
+    }
+  );
 
-async function PluginConfig() {
-  var [config, setConfig] = React.useState({
-    domain: '',
-    allowSignups: false,
-    adminToken: '',
-    port: '8100',
-    smtpHost: '',
-    smtpFrom: '',
-    smtpPort: '587',
-    smtpUsername: '',
-    smtpPassword: '',
-  });
+  useEffect(() => {
+    if (initialConfig) {
+      setConfig(initialConfig);
+    } else {
+      loadConfig();
+    }
+  }, [initialConfig]);
+
+  const handleChange = React.useCallback(
+    (key) => (value) => {
+      const newConfig = { ...config, [key]: value };
+      setConfig(newConfig);
+      onChange?.(newConfig);
+    },
+    [config, onChange]
+  );
+
+  const handleSave = async () => {
+    if (isPreInstall) {
+      onSave?.(config);
+    } else {
+      try {
+        await fetch(`${apiURL}/config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config),
+        });
+        await fetch(`${apiURL}/restart`, {
+          method: 'POST',
+        });
+      } catch (error) {
+        console.error('Failed to save configuration:', error);
+      }
+    }
+  };
 
   const loadConfig = async () => {
     try {
       const response = await fetch(`${apiURL}/config`);
       const data = await response.json();
-      config = data;
+      setConfig(data);
     } catch (error) {
-      console.error('Failed to load configuration:', error);
+      console.error('No configuration found:', error);
     }
   };
-
-  const handleSave = async () => {
-    try {
-      await fetch(`${apiURL}/config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
-      // Restart container to apply changes
-      await fetch(`${apiURL}/restart`, {
-        method: 'POST',
-      });
-    } catch (error) {
-      console.error('Failed to save configuration:', error);
-    }
-  };
-
-  await loadConfig();
 
   return (
     <Card>
@@ -61,71 +80,79 @@ async function PluginConfig() {
           Vaultwarden Configuration
         </Typography>
         <Box component="form" sx={{ '& > :not(style)': { m: 1 } }}>
-          <TextField
-            fullWidth
+          <ConfigTextField
             label="Domain"
-            value={config.domain}
-            onChange={(e) => setConfig({ ...config, domain: e.target.value })}
+            value={config.DOMAIN}
+            onChange={(value) => handleChange('DOMAIN')(value)}
             helperText="Full URL where Vaultwarden will be accessible"
           />
           <FormControlLabel
             control={
               <Switch
-                checked={config.allowSignups}
-                onChange={(e) => setConfig({ ...config, allowSignups: e.target.checked })}
+                checked={config.ALLOW_SIGNUPS || false}
+                onChange={(e) => handleChange('ALLOW_SIGNUPS')(e.target.checked)}
               />
             }
             label="Allow Signups"
           />
-          <TextField
-            fullWidth
+          <ConfigTextField
             label="Admin Token"
-            value={config.adminToken}
-            onChange={(e) => setConfig({ ...config, adminToken: e.target.value })}
+            value={config.ADMIN_TOKEN}
+            onChange={(value) => handleChange('ADMIN_TOKEN')(value)}
             type="password"
+            helperText="Token for accessing the admin panel"
           />
-          <TextField
-            fullWidth
+          <ConfigTextField
             label="Port"
-            value={config.port}
-            onChange={(e) => setConfig({ ...config, port: e.target.value })}
+            value={config.PORT}
+            onChange={(value) => handleChange('PORT')(value)}
+            helperText="Port for the Vaultwarden server"
           />
           <Typography variant="subtitle2" sx={{ mt: 2 }}>
             Email Configuration (Optional)
           </Typography>
-          <TextField
-            fullWidth
+          <FormControlLabel
+            control={
+              <Switch
+                checked={config.USE_SENDMAIL || false}
+                onChange={(e) => handleChange('USE_SENDMAIL')(e.target.checked)}
+              />
+            }
+            label="Use Sendmail"
+          />
+          <ConfigTextField
             label="SMTP Host"
-            value={config.smtpHost}
-            onChange={(e) => setConfig({ ...config, smtpHost: e.target.value })}
+            value={config.SMTP_HOST}
+            onChange={(value) => handleChange('SMTP_HOST')(value)}
+            helperText="SMTP server host"
           />
-          <TextField
-            fullWidth
+          <ConfigTextField
             label="SMTP From"
-            value={config.smtpFrom}
-            onChange={(e) => setConfig({ ...config, smtpFrom: e.target.value })}
+            value={config.SMTP_FROM}
+            onChange={(value) => handleChange('SMTP_FROM')(value)}
+            helperText="Email address to send emails from"
           />
-          <TextField
-            fullWidth
+          <ConfigTextField
             label="SMTP Port"
-            value={config.smtpPort}
-            onChange={(e) => setConfig({ ...config, smtpPort: e.target.value })}
+            value={config.SMTP_PORT}
+            onChange={(value) => handleChange('SMTP_PORT')(value)}
+            helperText="SMTP server port"
           />
-          <TextField
-            fullWidth
+          <ConfigTextField
             label="SMTP Username"
-            value={config.smtpUsername}
-            onChange={(e) => setConfig({ ...config, smtpUsername: e.target.value })}
+            value={config.SMTP_USERNAME}
+            onChange={(value) => handleChange('SMTP_USERNAME')(value)}
+            helperText="SMTP server username"
           />
-          <TextField
-            fullWidth
+          <ConfigTextField
             label="SMTP Password"
-            value={config.smtpPassword}
-            onChange={(e) => setConfig({ ...config, smtpPassword: e.target.value })}
+            value={config.SMTP_PASSWORD}
+            onChange={(value) => handleChange('SMTP_PASSWORD')(value)}
             type="password"
+            helperText="SMTP server password"
           />
           <Button variant="contained" onClick={handleSave}>
-            Save Configuration
+            {isPreInstall ? 'Install with Configuration' : 'Save Configuration'}
           </Button>
         </Box>
       </CardContent>

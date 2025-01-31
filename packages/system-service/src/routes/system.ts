@@ -6,6 +6,193 @@ import { promisify } from 'util';
 import axios from 'axios';
 import fs from 'fs/promises';
 import path from 'path';
+import yaml from 'yaml';
+import Docker from 'dockerode';
+const docker = new Docker({
+  socketPath: '/var/run/docker.sock'
+});
+
+const executeDockerCommand = async (command: string, pluginId: string, pluginDir: string): Promise<void> => {
+  // Common Docker command patterns
+  const pullMatch = command.match(/docker\s+pull\s+([^\s]+)/);
+  const runMatch = command.match(/docker\s+run\s+(.*)/);
+  const composeMatch = command.match(/docker[\s-]compose\s+(up|down|restart|stop)\s*(.*)/);
+
+  if (pullMatch) {
+    const image = pullMatch[1];
+    await new Promise((resolve, reject) => {
+      docker.pull(image, (err: Error | null, stream: NodeJS.ReadableStream) => {
+        if (err) reject(err);
+        docker.modem.followProgress(stream, (err: Error | null) => {
+          if (err) reject(err);
+          resolve(undefined);
+        });
+      });
+    });
+  } else if (runMatch) {
+    const args = runMatch[1];
+    const nameMatch = args.match(/--name\s+([^\s]+)/);
+    const imageMatch = args.match(/([^\s]+)$/);
+
+    if (nameMatch && imageMatch) {
+      const containerConfig: Docker.ContainerCreateOptions = {
+        Image: imageMatch[1],
+        name: nameMatch[1],
+      };
+
+      const container = await docker.createContainer(containerConfig);
+      await container.start();
+    }
+  } else if (composeMatch) {
+    const [, action] = composeMatch;
+
+    // Read docker-compose.yml
+    const composeFile = await fs.readFile(path.join(pluginDir, 'docker-compose.yml'), 'utf-8');
+    const composeConfig = yaml.parse(composeFile);
+
+    let envVars: { [key: string]: string } = {};
+    try {
+      const envFile = await fs.readFile(path.join(pluginDir, '.env'), 'utf-8');
+      envVars = envFile.split('\n').reduce((acc: any, line) => {
+        const [key, value] = line.split('=');
+        if (key && value) acc[key.trim()] = value.trim();
+        return acc;
+      }, {});
+
+      // Read and merge config.json if it exists
+      const configPath = path.join(process.cwd(), 'plugins', pluginId, 'config.json');
+      try {
+        const configContent = await fs.readFile(configPath, 'utf-8');
+        const config = JSON.parse(configContent);
+        // Merge config into envVars, config takes precedence
+        envVars = { ...envVars, ...config };
+      } catch (error) {
+        // config.json doesn't exist or can't be read, continue with just .env vars
+      }
+    } catch (error) {
+      // .env file doesn't exist or can't be read
+    }
+
+    console.log('Env Vars: ', envVars);
+
+    // Get existing containers
+    const containers = await docker.listContainers({ all: true });
+    const projectName = pluginId;  // Use pluginId as project name for better identification
+
+    switch (action) {
+      case 'up':
+        // Create and start containers for each service
+        for (const [serviceName, serviceConfig] of Object.entries(composeConfig.services)) {
+          const config = serviceConfig as any;
+          const containerName = `${projectName}_${serviceName}`;
+
+          // Check if container already exists
+          const existingContainer = containers.find(c =>
+            c.Names.includes(`/${containerName}`)
+          );
+
+          if (existingContainer) {
+            const container = docker.getContainer(existingContainer.Id);
+            if (existingContainer.State !== 'running') {
+              await container.start();
+            }
+            continue;
+          }
+
+          // Process environment variables with defaults
+          const processEnvValue = (value: string): string => {
+            const matches = value.match(/\${([^}]+)}/g);
+            if (!matches) return value;
+
+            return matches.reduce((acc, match) => {
+              const envVar = match.slice(2, -1);
+              const [varName, defaultValue] = envVar.split(':-');
+              const envValue = envVars[varName] || defaultValue || '';
+              return acc.replace(match, envValue);
+            }, value);
+          };
+
+          // Process environment array
+          const envArray = config.environment?.map((env: string) => {
+            if (typeof env === 'string') {
+              const [key, value] = env.split('=');
+              return `${key}=${processEnvValue(value)}`;
+            }
+            return env;
+          }) || [];
+
+          // Process ports with environment variables
+          const portBindings: any = {};
+          if (config.ports) {
+            config.ports.forEach((p: string) => {
+              const portMapping = processEnvValue(p);
+              const [host, container] = portMapping.replace(/['"]/g, '').split(':');
+              const containerPort = `${container}/tcp`;
+              portBindings[containerPort] = [{ HostPort: host }];
+            });
+          }
+
+          // Process volumes with environment variables
+          const volumeBindings = config.volumes?.map((v: string) => {
+            const volumeMapping = processEnvValue(v);
+            const [host, container] = volumeMapping.split(':');
+            return `${path.resolve(pluginDir, host)}:${container}`;
+          }) || [];
+
+          const containerConfig: Docker.ContainerCreateOptions = {
+            Image: config.image,
+            name: containerName,
+            Env: envArray,
+            HostConfig: {
+              Binds: volumeBindings,
+              PortBindings: portBindings,
+              RestartPolicy: { Name: config.restart || 'no' }
+            }
+          };
+
+          // Pull image if needed
+          await new Promise((resolve, reject) => {
+            docker.pull(config.image, (err: Error | null, stream: NodeJS.ReadableStream) => {
+              if (err) reject(err);
+              docker.modem.followProgress(stream, (err: Error | null) => {
+                if (err) reject(err);
+                resolve(undefined);
+              });
+            });
+          });
+
+          // Create and start container
+          const container = await docker.createContainer(containerConfig);
+          await container.start();
+        }
+        break;
+
+      case 'down':
+      case 'stop':
+        // Stop and optionally remove containers
+        for (const container of containers) {
+          if (container.Labels['com.docker.compose.project'] === projectName) {
+            const containerObj = docker.getContainer(container.Id);
+            await containerObj.stop();
+            if (action === 'down') {
+              await containerObj.remove();
+            }
+          }
+        }
+        break;
+
+      case 'restart':
+        // Restart containers
+        for (const container of containers) {
+          if (container.Labels['com.docker.compose.project'] === projectName) {
+            const containerObj = docker.getContainer(container.Id);
+            await containerObj.restart();
+          }
+        }
+        break;
+    }
+  }
+};
 
 interface UpdateSettings {
   autoUpdate: boolean;
@@ -1048,6 +1235,10 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post('/plugins/:id/install', async (request, reply) => {
     const { id } = request.params as { id: string };
+    const { config } = request.body as { config?: Record<string, any> };
+    const pluginsDir = path.join(process.cwd(), 'plugins');
+    await fs.mkdir(pluginsDir, { recursive: true });
+    const pluginDir = path.join(pluginsDir, id);
 
     try {
       // Fetch plugin info and config component
@@ -1059,16 +1250,33 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         throw new Error('Plugin not found');
       }
 
-      // Create plugins directory
-      const pluginsDir = path.join(process.cwd(), 'plugins');
-      await fs.mkdir(pluginsDir, { recursive: true });
-
       // Clone plugin repository
       await execAsync(`git clone ${plugin.repository} ${path.join(pluginsDir, id)}`);
 
+      // Check if plugin requires configuration
+      const configPath = path.join(pluginDir, 'ui', 'config.tsx');
+      const requiresConfig = await fs.access(configPath).then(() => true).catch(() => false);
+
+      if (requiresConfig && !config) {
+        // Remove cloned repository if no config provided
+        await fs.rm(pluginDir, { recursive: true, force: true });
+        reply.code(400);
+        throw new Error('Plugin requires configuration');
+      }
+
+      // If config is provided, save it
+      if (config) {
+        const configJsonPath = path.join(pluginDir, 'config.json');
+        await fs.writeFile(configJsonPath, JSON.stringify(config, null, 2));
+        // Create .env file from config
+        const envContent = Object.entries(config)
+          .map(([key, value]) => `${key}=${value}`)
+          .join('\n');
+        await fs.writeFile(path.join(pluginDir, '.env'), envContent);
+      }
+
       // Read and store the configuration component
       try {
-        const configPath = path.join(pluginsDir, id, 'ui', 'config.tsx');
         const configCode = await fs.readFile(configPath, 'utf-8');
         plugin.configComponent = Buffer.from(configCode).toString('base64');
       } catch (error) {
@@ -1079,13 +1287,54 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       const installScript = path.join(pluginsDir, id, 'install.sh');
       try {
         await fs.access(installScript);
-        await runPrivilegedCommand(`bash ${installScript}`);
-      } catch {
-        // No install script, skip
+
+        // Read the install script
+        const scriptContent = await fs.readFile(installScript, 'utf-8');
+
+        // Process the script content
+        const lines = scriptContent.split('\n');
+        let isInHeredoc = false;
+        let heredocMarker = '';
+        let currentCommand = '';
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+
+          // Skip empty lines and comments
+          if (!line || line.startsWith('#')) continue;
+
+          if (isInHeredoc) {
+            // Check if this line ends the heredoc
+            if (line === heredocMarker) {
+              isInHeredoc = false;
+              await runPrivilegedCommand(currentCommand);
+              currentCommand = '';
+            } else {
+              currentCommand += line + '\n';
+            }
+          } else {
+            // Check for heredoc start
+            const heredocMatch = line.match(/<<\s*(\w+)\s*$/);
+            if (heredocMatch) {
+              isInHeredoc = true;
+              heredocMarker = heredocMatch[1];
+              currentCommand = line + '\n';
+            } else if (line.includes('docker')) {
+              await executeDockerCommand(line, id, pluginDir);
+            } else {
+              await runPrivilegedCommand(line);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Install script error:', error);
+        // Continue with installation even if script fails
       }
 
       return { status: 'success', message: 'Plugin installed successfully' };
     } catch (error) {
+      // Cleanup on failure
+      await fs.rm(pluginDir, { recursive: true, force: true }).catch(() => { });
       throw new Error(`Failed to install plugin: ${error}`);
     }
   });

@@ -1,6 +1,6 @@
 {
   "name": "@nestos/control-panel",
-  "version": "0.1.2.3",
+  "version": "0.1.2.4",
   "private": true,
   "scripts": {
     "dev": "vite",

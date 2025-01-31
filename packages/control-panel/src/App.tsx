@@ -15,8 +15,7 @@ const queryClient = new QueryClient({
 });
 
 // API base URL from environment or default
-const API_URL =
-  import.meta.env.VITE_API_URL || `http://${new URL(window.location.href).hostname}:3000`;
+const API_URL = import.meta.env.VITE_API_URL || ''; //`http://${new URL(window.location.href).hostname}:3000`;
 
 function ApiCheck({ children }: { children: React.ReactNode }) {
   const { isLoading, isError, error } = useQuery({

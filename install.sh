@@ -52,8 +52,10 @@ apt-get install -y \
 
 # Verify Node.js version
 NODE_VERSION=$(node --version)
-if [[ ! $NODE_VERSION =~ ^v20 ]]; then
-    echo -e "${RED}Node.js 20 installation failed. Got version: $NODE_VERSION${NC}"
+MAJOR_VERSION=$(echo "$NODE_VERSION" | cut -d. -f1 | tr -d 'v')
+
+if (( MAJOR_VERSION < 20 )); then
+    echo -e "${RED}Node.js 20 or higher is required. Got version: $NODE_VERSION${NC}"
     exit 1
 fi
 

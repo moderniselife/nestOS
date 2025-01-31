@@ -42,7 +42,14 @@ interface Plugin {
   configComponent?: string; // Base64 encoded React component code
 }
 
-const ConfigTextField = React.memo(({ label, value, onChange, type = 'text', helperText = '' }) => {
+const ConfigTextField = React.memo<{
+  label: string;
+  value: string;
+  onChange?: (value: string) => void;
+  type?: string;
+  helperText?: string;
+}>(({ label, value, onChange, type = 'text', helperText = '' }) => {
+  ConfigTextField.displayName = 'ConfigTextField';
   const [localValue, setLocalValue] = React.useState(value);
 
   React.useEffect(() => {
@@ -64,16 +71,20 @@ const ConfigTextField = React.memo(({ label, value, onChange, type = 'text', hel
   );
 });
 
-// Add this helper function at the top of the file
+interface PluginConfigProps {
+  config?: Record<string, any>;
+  onChange?: (config: Record<string, any>) => void;
+  onSave?: (config: Record<string, any>) => void;
+  isPreInstall?: boolean;
+}
+
 const createConfigComponent = (configCode: string, pluginId: string) => {
-  return React.lazy(() => {
-    // Create a babel-transformed version of the component
+  return React.lazy<React.ComponentType<PluginConfigProps>>(() => {
     const transformedCode = Babel.transform(configCode, {
-      presets: ['react'], // Use the built-in 'react' preset instead of '@babel/preset-react'
+      presets: ['react'],
       filename: 'dynamic.tsx',
     }).code;
 
-    // Create the component with proper scope
     const createComponent = new Function(
       'React',
       'MaterialUI',
@@ -131,12 +142,6 @@ export default function Plugins(): JSX.Element {
   const [configBeforeInstall, setConfigBeforeInstall] = useState<Record<string, any>>({});
   const queryClient = useQueryClient();
 
-  const checkRequiresConfig = async (pluginId: string) => {
-    const response = await fetch(`${apiUrl}/api/plugins/${pluginId}/requires-config`);
-    if (!response.ok) throw new Error('Failed to check plugin configuration');
-    return response.json();
-  };
-
   const { data: plugins, isLoading } = useQuery<Plugin[]>({
     queryKey: ['plugins'],
     queryFn: async () => {
@@ -163,7 +168,9 @@ export default function Plugins(): JSX.Element {
         },
         body: JSON.stringify({ config }),
       });
-      if (!response.ok) throw new Error('Failed to install plugin');
+      if (!response.ok) {
+        throw new Error('Failed to install plugin');
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -176,13 +183,15 @@ export default function Plugins(): JSX.Element {
   const handleInstall = async (plugin: Plugin) => {
     try {
       const response = await fetch(`${apiUrl}/api/plugins/${plugin.id}/requires-config`);
-      if (!response.ok) throw new Error('Failed to check plugin configuration');
+      if (!response.ok) {
+        throw new Error('Failed to check plugin configuration');
+      }
       const { requiresConfig, configComponent } = await response.json();
 
       if (requiresConfig) {
         setPreInstallPlugin({
           ...plugin,
-          configComponent: configComponent,
+          configComponent,
         });
       } else {
         installMutation.mutate({ pluginId: plugin.id });
@@ -207,17 +216,20 @@ export default function Plugins(): JSX.Element {
       <DialogContent>
         {preInstallPlugin?.configComponent && (
           <Suspense fallback={<CircularProgress />}>
-            {React.createElement(createConfigComponent(preInstallPlugin.configComponent), {
-              config: configBeforeInstall,
-              onChange: setConfigBeforeInstall,
-              onSave: () => {
-                installMutation.mutate({
-                  pluginId: preInstallPlugin.id,
-                  config: configBeforeInstall,
-                });
-              },
-              isPreInstall: true,
-            })}
+            {React.createElement(
+              createConfigComponent(preInstallPlugin.configComponent, preInstallPlugin.id),
+              {
+                config: configBeforeInstall,
+                onChange: setConfigBeforeInstall,
+                onSave: () => {
+                  installMutation.mutate({
+                    pluginId: preInstallPlugin.id,
+                    config: configBeforeInstall,
+                  });
+                },
+                isPreInstall: true,
+              }
+            )}
           </Suspense>
         )}
       </DialogContent>

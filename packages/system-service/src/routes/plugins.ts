@@ -12,7 +12,7 @@ const docker = new Docker({
 const getRemoteConfig = async (repository: string): Promise<string | null> => {
     try {
         const [, owner, repo] = repository.match(/github\.com\/([^/]+)\/([^/]+)/) || [];
-        if (!owner || !repo) return null;
+        if (!owner || !repo) { return null; }
 
         const timestamp = Date.now();
         const response = await axios.get(

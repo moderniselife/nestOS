@@ -22,9 +22,9 @@ const executeDockerCommand = async (command: string, pluginId: string, pluginDir
     const image = pullMatch[1];
     await new Promise((resolve, reject) => {
       docker.pull(image, (err: Error | null, stream: NodeJS.ReadableStream) => {
-        if (err) reject(err);
+        if (err) { reject(err); }
         docker.modem.followProgress(stream, (err: Error | null) => {
-          if (err) reject(err);
+          if (err) { reject(err); }
           resolve(undefined);
         });
       });
@@ -55,7 +55,7 @@ const executeDockerCommand = async (command: string, pluginId: string, pluginDir
       const envFile = await fs.readFile(path.join(pluginDir, '.env'), 'utf-8');
       envVars = envFile.split('\n').reduce((acc: any, line) => {
         const [key, value] = line.split('=');
-        if (key && value) acc[key.trim()] = value.trim();
+        if (key && value) { acc[key.trim()] = value.trim(); }
         return acc;
       }, {});
 
@@ -102,7 +102,7 @@ const executeDockerCommand = async (command: string, pluginId: string, pluginDir
           // Process environment variables with defaults
           const processEnvValue = (value: string): string => {
             const matches = value.match(/\${([^}]+)}/g);
-            if (!matches) return value;
+            if (!matches) { return value; }
 
             return matches.reduce((acc, match) => {
               const envVar = match.slice(2, -1);
@@ -153,9 +153,9 @@ const executeDockerCommand = async (command: string, pluginId: string, pluginDir
           // Pull image if needed
           await new Promise((resolve, reject) => {
             docker.pull(config.image, (err: Error | null, stream: NodeJS.ReadableStream) => {
-              if (err) reject(err);
+              if (err) { reject(err); }
               docker.modem.followProgress(stream, (err: Error | null) => {
-                if (err) reject(err);
+                if (err) { reject(err); }
                 resolve(undefined);
               });
             });
@@ -1301,7 +1301,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
           const line = lines[i].trim();
 
           // Skip empty lines and comments
-          if (!line || line.startsWith('#')) continue;
+          if (!line || line.startsWith('#')) { continue; }
 
           if (isInHeredoc) {
             // Check if this line ends the heredoc
@@ -1310,7 +1310,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
               await runPrivilegedCommand(currentCommand);
               currentCommand = '';
             } else {
-              currentCommand += line + '\n';
+              currentCommand += `${line}\n`;
             }
           } else {
             // Check for heredoc start
@@ -1318,7 +1318,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
             if (heredocMatch) {
               isInHeredoc = true;
               heredocMarker = heredocMatch[1];
-              currentCommand = line + '\n';
+              currentCommand = `${line}\n`;
             } else if (line.includes('docker')) {
               await executeDockerCommand(line, id, pluginDir);
             } else {

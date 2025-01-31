@@ -14,12 +14,15 @@ import { apiUrl } from '../../App';
 import { useState, useEffect } from 'react';
 
 const BackgroundContainer = styled(Box)(() => ({
-  minHeight: '100vh',
-  padding: '2rem',
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
   backgroundImage: 'var(--background-image, url(/backgrounds/mountain-night.jpg))',
   backgroundSize: 'cover',
   backgroundPosition: 'center',
-  position: 'relative',
+  zIndex: -1,
   '&::before': {
     content: '""',
     position: 'absolute',
@@ -32,10 +35,18 @@ const BackgroundContainer = styled(Box)(() => ({
   },
 }));
 
-const ContentContainer = styled(Box)({
+const ContentContainer = styled(Box)(({ theme }) => ({
   position: 'relative',
   zIndex: 1,
-});
+  minHeight: '100vh',
+  height: 'auto',
+  padding: '2rem',
+  paddingTop: '88px',
+  paddingBottom: '120px', // Add extra padding at bottom for search bar
+  [theme.breakpoints.up('sm')]: {
+    marginLeft: '240px',
+  },
+}));
 
 const StatsCard = styled(Card)(({ theme }) => ({
   padding: theme.spacing(2),
@@ -125,7 +136,20 @@ export default function NestLauncher(): JSX.Element {
   return (
     <BackgroundContainer>
       <ContentContainer>
-        <Typography variant="h2" color="white" gutterBottom>
+        <Typography
+          variant="h2"
+          color="white"
+          gutterBottom
+          sx={{
+            fontSize: {
+              xs: '2rem', // Mobile
+              sm: '3rem', // Tablet
+              md: '3rem', // Desktop (default h2 size)
+            },
+            mt: 2,
+            mb: 5,
+          }}
+        >
           {greeting}, {systemInfo?.hostname}.
         </Typography>
 

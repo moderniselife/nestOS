@@ -34,7 +34,11 @@ const menuItems = [
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
 ];
 
-export default function Sidebar(): JSX.Element {
+interface SidebarProps {
+  isGlassMode?: boolean;
+}
+
+export default function Sidebar({ isGlassMode = false }: SidebarProps): JSX.Element {
   const theme = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -55,8 +59,9 @@ export default function Sidebar(): JSX.Element {
       <Box
         sx={{
           p: 2,
-          borderBottom: `1px solid ${theme.palette.divider}`,
-          backgroundColor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: isGlassMode ? 'rgba(255, 255, 255, 0.2)' : theme.palette.divider,
+          backgroundColor: isGlassMode ? 'transparent' : 'background.paper',
         }}
       >
         <Stack direction="row" spacing={2} alignItems="center">
@@ -79,10 +84,20 @@ export default function Sidebar(): JSX.Element {
             }}
           />
           <Box>
-            <Typography variant="h6" noWrap component="div" sx={{ color: 'primary.main' }}>
+            <Typography
+              variant="h6"
+              noWrap
+              component="div"
+              sx={{
+                color: isGlassMode ? 'white' : 'primary.main',
+              }}
+            >
               NestOS
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              color={isGlassMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'}
+            >
               v{version}
             </Typography>
           </Box>
@@ -97,16 +112,24 @@ export default function Sidebar(): JSX.Element {
               onClick={() => navigate(item.path)}
               sx={{
                 '&.Mui-selected': {
-                  backgroundColor: 'rgba(255, 112, 67, 0.08)',
+                  backgroundColor: isGlassMode
+                    ? 'rgba(255, 255, 255, 0.1)'
+                    : 'rgba(255, 112, 67, 0.08)',
                   '&:hover': {
-                    backgroundColor: 'rgba(255, 112, 67, 0.12)',
+                    backgroundColor: isGlassMode
+                      ? 'rgba(255, 255, 255, 0.15)'
+                      : 'rgba(255, 112, 67, 0.12)',
                   },
                 },
               }}
             >
               <ListItemIcon
                 sx={{
-                  color: location.pathname === item.path ? 'primary.main' : 'inherit',
+                  color: isGlassMode
+                    ? 'white'
+                    : location.pathname === item.path
+                    ? 'primary.main'
+                    : 'inherit',
                 }}
               >
                 {item.icon}
@@ -115,7 +138,11 @@ export default function Sidebar(): JSX.Element {
                 primary={item.text}
                 sx={{
                   '& .MuiTypography-root': {
-                    color: location.pathname === item.path ? 'primary.main' : 'inherit',
+                    color: isGlassMode
+                      ? 'white'
+                      : location.pathname === item.path
+                      ? 'primary.main'
+                      : 'inherit',
                   },
                 }}
               />

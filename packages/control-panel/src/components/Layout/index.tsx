@@ -82,6 +82,13 @@ export default function Layout(): JSX.Element {
     setError(null);
   };
 
+  const isLauncherPage = location.pathname === '/';
+  const glassStyle = isLauncherPage ? {
+    background: 'rgba(255, 255, 255, 0.1)',
+    backdropFilter: 'blur(10px)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  } : {};
+
   return (
     <Box sx={{ display: 'flex' }}>
       <AppBar
@@ -89,8 +96,10 @@ export default function Layout(): JSX.Element {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
-          backgroundColor: 'background.paper',
-          borderBottom: `1px solid ${theme.palette.divider}`,
+          backgroundColor: isLauncherPage ? 'transparent' : 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: isLauncherPage ? 'rgba(255, 255, 255, 0.2)' : theme.palette.divider,
+          ...glassStyle,
         }}
       >
         <Toolbar>
@@ -109,7 +118,7 @@ export default function Layout(): JSX.Element {
             component="div"
             sx={{
               flexGrow: 1,
-              color: 'text.primary',
+              color: isLauncherPage ? 'white' : 'text.primary',
             }}
           >
             {getPageTitle(location.pathname)}
@@ -141,17 +150,18 @@ export default function Layout(): JSX.Element {
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{
-            keepMounted: true, // Better open performance on mobile
+            keepMounted: true,
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
+              ...(isLauncherPage && glassStyle),
             },
           }}
         >
-          <Sidebar />
+          <Sidebar isGlassMode={isLauncherPage} />
         </Drawer>
         <Drawer
           variant="permanent"
@@ -160,12 +170,15 @@ export default function Layout(): JSX.Element {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
-              borderRight: `1px solid ${theme.palette.divider}`,
+              borderRight: '1px solid',
+              borderColor: isLauncherPage ? 'rgba(255, 255, 255, 0.2)' : theme.palette.divider,
+              backgroundColor: isLauncherPage ? 'transparent' : 'background.paper',
+              ...glassStyle,
             },
           }}
           open
         >
-          <Sidebar />
+          <Sidebar isGlassMode={isLauncherPage} />
         </Drawer>
       </Box>
 

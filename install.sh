@@ -49,7 +49,7 @@ apt-get install -y \
 
 # Clone NestOS repository
 print_status "Cloning NestOS repository"
-git clone https://github.com/nestOS/nasos.git /tmp/nestos
+git clone https://github.com/moderniselife/nestos.git /tmp/nestos
 cd /tmp/nestos
 
 # Build components

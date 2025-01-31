@@ -12,6 +12,9 @@ import {
   Alert,
   Divider,
   MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -35,11 +38,13 @@ interface BackupSettings {
   location: string;
   retention: number;
 }
+interface AppearanceSettings {
+  background: string;
+}
 
 export default function Settings(): JSX.Element {
   const queryClient = useQueryClient();
 
-  // Move these hooks inside the component
   const [isBackingUp, setIsBackingUp] = React.useState(false);
 
   const { data: backupSettings } = useQuery<BackupSettings>({
@@ -133,10 +138,40 @@ export default function Settings(): JSX.Element {
     }
   };
 
+  const { data: appearanceSettings } = useQuery<AppearanceSettings>({
+    queryKey: ['appearance-settings'],
+    queryFn: async () => {
+      const response = await fetch(`${apiUrl}/api/appearance/appearance`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch appearance settings');
+      }
+      return response.json();
+    },
+  });
+
+  const handleAppearanceSettings = async (settings: Partial<AppearanceSettings>) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/appearance/appearance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update appearance settings');
+      }
+      await queryClient.invalidateQueries({ queryKey: ['appearance-settings'] });
+    } catch (error) {
+      console.error('Failed to update appearance settings:', error);
+      alert('Failed to update appearance settings');
+    }
+  };
+
   // Add state for system settings
   const [hostname, setHostname] = React.useState('');
   const [timezone, setTimezone] = React.useState('');
   const [timezones, setTimezones] = React.useState<string[]>([]);
+  const [defaultView, setDefaultView] = React.useState<'launcher' | 'dashboard'>('launcher');
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
 
@@ -148,11 +183,11 @@ export default function Settings(): JSX.Element {
       .catch(console.error);
   }, []);
 
-  // Update state when systemInfo loads
   React.useEffect(() => {
     if (systemInfo) {
       setHostname(systemInfo.hostname || '');
       setTimezone(systemInfo.timezone || 'UTC');
+      setDefaultView(systemInfo.defaultView || 'launcher');
     }
   }, [systemInfo]);
 
@@ -164,7 +199,7 @@ export default function Settings(): JSX.Element {
       const response = await fetch(`${apiUrl}/api/system/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hostname, timezone }),
+        body: JSON.stringify({ hostname, timezone, defaultView }),
       });
 
       if (!response.ok) {
@@ -222,6 +257,19 @@ export default function Settings(): JSX.Element {
                     ))}
                   </TextField>
                 </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth variant="outlined" size="small">
+                    <InputLabel>Default View</InputLabel>
+                    <Select
+                      value={defaultView}
+                      onChange={(e) => setDefaultView(e.target.value as 'launcher' | 'dashboard')}
+                      label="Default View"
+                    >
+                      <MenuItem value="launcher">App Launcher</MenuItem>
+                      <MenuItem value="dashboard">Dashboard</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
               </Grid>
               {saveError && (
                 <Alert severity="error" sx={{ mt: 2 }}>
@@ -238,6 +286,30 @@ export default function Settings(): JSX.Element {
                   Save Changes
                 </Button>
               </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Appearance
+              </Typography>
+              <FormControl fullWidth variant="outlined" size="small">
+                <InputLabel>Background</InputLabel>
+                <Select
+                  value={appearanceSettings?.background || 'mountain-night'}
+                  onChange={(e) => handleAppearanceSettings({ background: e.target.value })}
+                  label="Background"
+                >
+                  <MenuItem value="mountain-night">Mountain Night</MenuItem>
+                  <MenuItem value="abstract-dark">Abstract Dark</MenuItem>
+                  <MenuItem value="forest-mist">Forest Mist</MenuItem>
+                  <MenuItem value="ocean-dark">Ocean Dark</MenuItem>
+                  <MenuItem value="space">Space</MenuItem>
+                </Select>
+              </FormControl>
             </CardContent>
           </Card>
         </Grid>

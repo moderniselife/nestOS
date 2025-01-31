@@ -25,13 +25,17 @@ import Docker from '../Docker';
 import Network from '../Network';
 import Settings from '../Settings';
 import Plugins from '../Plugins';
+import NestLauncher from '../NestLauncher';
 import { apiUrl } from '../../App';
 
 const drawerWidth = 240;
 
+// Update getPageTitle function
 const getPageTitle = (pathname: string): string => {
   switch (pathname) {
     case '/':
+      return 'Home';
+    case '/dashboard':
       return 'Dashboard';
     case '/storage':
       return 'Storage Management';
@@ -169,14 +173,15 @@ export default function Layout(): JSX.Element {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: location.pathname === '/' ? 0 : 3,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           mt: '64px', // AppBar height
           backgroundColor: 'background.default',
         }}
       >
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<NestLauncher />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/storage" element={<Storage />} />
           <Route path="/docker" element={<Docker />} />
           <Route path="/network" element={<Network />} />

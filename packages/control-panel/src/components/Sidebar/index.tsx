@@ -8,7 +8,7 @@ import {
   Divider,
   Typography,
   useTheme,
-  Stack
+  Stack,
 } from '@mui/material';
 import {
   Storage as StorageIcon,
@@ -16,7 +16,8 @@ import {
   NetworkCheck as NetworkIcon,
   Settings as SettingsIcon,
   Dashboard as DashboardIcon,
-  Extension as ExtensionIcon
+  Extension as ExtensionIcon,
+  Apps as AppsIcon,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -24,12 +25,13 @@ import { apiUrl } from '../../App';
 import { version } from '../../../../../package.json';
 
 const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+  { text: 'Home', icon: <AppsIcon />, path: '/' },
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Storage', icon: <StorageIcon />, path: '/storage' },
   { text: 'Docker', icon: <DockerIcon />, path: '/docker' },
   { text: 'Network', icon: <NetworkIcon />, path: '/network' },
   { text: 'Plugins', icon: <ExtensionIcon />, path: '/plugins' },
-  { text: 'Settings', icon: <SettingsIcon />, path: '/settings' }
+  { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
 ];
 
 export default function Sidebar(): JSX.Element {
@@ -45,7 +47,7 @@ export default function Sidebar(): JSX.Element {
         throw new Error('Failed to fetch system info');
       }
       return response.json();
-    }
+    },
   });
 
   return (
@@ -54,7 +56,7 @@ export default function Sidebar(): JSX.Element {
         sx={{
           p: 2,
           borderBottom: `1px solid ${theme.palette.divider}`,
-          backgroundColor: 'background.paper'
+          backgroundColor: 'background.paper',
         }}
       >
         <Stack direction="row" spacing={2} alignItems="center">
@@ -68,12 +70,12 @@ export default function Sidebar(): JSX.Element {
               animation: 'spin 20s linear infinite',
               '@keyframes spin': {
                 '0%': {
-                  transform: 'rotate(0deg)'
+                  transform: 'rotate(0deg)',
                 },
                 '100%': {
-                  transform: 'rotate(360deg)'
-                }
-              }
+                  transform: 'rotate(360deg)',
+                },
+              },
             }}
           />
           <Box>
@@ -97,24 +99,24 @@ export default function Sidebar(): JSX.Element {
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(255, 112, 67, 0.08)',
                   '&:hover': {
-                    backgroundColor: 'rgba(255, 112, 67, 0.12)'
-                  }
-                }
+                    backgroundColor: 'rgba(255, 112, 67, 0.12)',
+                  },
+                },
               }}
             >
               <ListItemIcon
                 sx={{
-                  color: location.pathname === item.path ? 'primary.main' : 'inherit'
+                  color: location.pathname === item.path ? 'primary.main' : 'inherit',
                 }}
               >
                 {item.icon}
               </ListItemIcon>
-              <ListItemText 
+              <ListItemText
                 primary={item.text}
                 sx={{
                   '& .MuiTypography-root': {
-                    color: location.pathname === item.path ? 'primary.main' : 'inherit'
-                  }
+                    color: location.pathname === item.path ? 'primary.main' : 'inherit',
+                  },
                 }}
               />
             </ListItemButton>
@@ -131,27 +133,20 @@ export default function Sidebar(): JSX.Element {
         {systemInfo && (
           <List dense>
             <ListItem>
-              <ListItemText
-                primary="Hostname"
-                secondary={systemInfo.hostname}
-              />
+              <ListItemText primary="Hostname" secondary={systemInfo.hostname} />
             </ListItem>
             <ListItem>
-              <ListItemText
-                primary="OS"
-                secondary={`${systemInfo.distro} ${systemInfo.release}`}
-              />
+              <ListItemText primary="OS" secondary={`${systemInfo.distro} ${systemInfo.release}`} />
             </ListItem>
             <ListItem>
-              <ListItemText
-                primary="CPU"
-                secondary={`${systemInfo.cpu.cores} cores`}
-              />
+              <ListItemText primary="CPU" secondary={`${systemInfo.cpu.cores} cores`} />
             </ListItem>
             <ListItem>
               <ListItemText
                 primary="Memory"
-                secondary={`${Math.round(systemInfo.memory.used / 1024 / 1024 / 1024)}GB / ${Math.round(systemInfo.memory.total / 1024 / 1024 / 1024)}GB`}
+                secondary={`${Math.round(
+                  systemInfo.memory.used / 1024 / 1024 / 1024
+                )}GB / ${Math.round(systemInfo.memory.total / 1024 / 1024 / 1024)}GB`}
               />
             </ListItem>
           </List>

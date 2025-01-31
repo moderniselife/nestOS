@@ -7,6 +7,7 @@ import { dockerRoutes } from './routes/docker.js';
 import { networkRoutes } from './routes/network.js';
 import { pluginRoutes } from './routes/plugins.js';
 import { setupWebSocketHandlers } from './websocket/index.js';
+import appearanceRoutes from './routes/system/appearance.js';
 
 const fastify = Fastify({
   logger: true,
@@ -36,6 +37,7 @@ fastify.get('/', async () => {
       docker: '/api/docker',
       network: '/api/network',
       plugins: '/api/plugins',
+      appearance: '/api/appearance',
       websocket: '/ws'
     }
   };
@@ -47,6 +49,7 @@ await fastify.register(storageRoutes, { prefix: '/api/storage' });
 await fastify.register(dockerRoutes, { prefix: '/api/docker' });
 await fastify.register(networkRoutes, { prefix: '/api/network' });
 await fastify.register(pluginRoutes, { prefix: '/api/plugins' });
+await fastify.register(appearanceRoutes, { prefix: '/api/appearance' })
 
 // Setup WebSocket handlers for real-time updates
 setupWebSocketHandlers(fastify);

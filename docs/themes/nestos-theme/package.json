@@ -1,0 +1,29 @@
+{
+  "name": "nestos-theme",
+  "displayName": "NestOS Theme",
+  "description": "Official NestOS VS Code theme",
+  "version": "1.0.5",
+  "publisher": "nestos",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "extensionDependencies": [
+    "be5invis.vscode-custom-css"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "categories": [
+    "Themes"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "NestOS",
+        "uiTheme": "vs-dark",
+        "path": "./themes/nestos-color-theme.json"
+      }
+    ]
+  }
+}

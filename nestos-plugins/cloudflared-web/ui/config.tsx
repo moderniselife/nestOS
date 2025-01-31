@@ -14,12 +14,13 @@ import {
 function PluginConfig({ config: initialConfig, onChange, onSave, isPreInstall = false }) {
   const [config, setConfig] = useState(
     initialConfig || {
-      WEB_PORT: '3001',
-      CLOUDFLARED_PORT: '3002',
-      ADMIN_USERNAME: '',
-      ADMIN_PASSWORD: '',
-      ENABLE_HTTPS: false,
-      HTTPS_PORT: '3003',
+      WEBUI_PORT: '14333',
+      EDGE_IP_VERSION: 'auto',
+      PROTOCOL: 'auto',
+      METRICS_ENABLE: false,
+      METRICS_PORT: '60123',
+      BASIC_AUTH_USER: 'admin',
+      BASIC_AUTH_PASS: '',
     }
   );
 
@@ -77,52 +78,59 @@ function PluginConfig({ config: initialConfig, onChange, onSave, isPreInstall = 
         </Typography>
         <Box component="form" sx={{ '& > :not(style)': { m: 1 } }}>
           <ConfigTextField
-            label="Web UI Port"
-            value={config.WEB_PORT}
-            onChange={(value) => handleChange('WEB_PORT')(value)}
+            label="WebUI Port"
+            value={config.WEBUI_PORT}
+            onChange={(value) => handleChange('WEBUI_PORT')(value)}
             helperText="Port for the web interface"
           />
 
           <ConfigTextField
-            label="Cloudflared Port"
-            value={config.CLOUDFLARED_PORT}
-            onChange={(value) => handleChange('CLOUDFLARED_PORT')(value)}
-            helperText="Port for the Cloudflared service"
+            label="Edge IP Version"
+            value={config.EDGE_IP_VERSION}
+            onChange={(value) => handleChange('EDGE_IP_VERSION')(value)}
+            helperText="IP version (auto, 4, or 6)"
           />
 
           <ConfigTextField
-            label="Admin Username"
-            value={config.ADMIN_USERNAME}
-            onChange={(value) => handleChange('ADMIN_USERNAME')(value)}
-            helperText="Username for the web interface"
-          />
-
-          <ConfigTextField
-            label="Admin Password"
-            value={config.ADMIN_PASSWORD}
-            onChange={(value) => handleChange('ADMIN_PASSWORD')(value)}
-            type="password"
-            helperText="Password for the web interface"
+            label="Protocol"
+            value={config.PROTOCOL}
+            onChange={(value) => handleChange('PROTOCOL')(value)}
+            helperText="Connection protocol (auto, http2, or quic)"
           />
 
           <FormControlLabel
             control={
               <Switch
-                checked={config.ENABLE_HTTPS || false}
-                onChange={(e) => handleChange('ENABLE_HTTPS')(e.target.checked)}
+                checked={config.METRICS_ENABLE || false}
+                onChange={(e) => handleChange('METRICS_ENABLE')(e.target.checked)}
               />
             }
-            label="Enable HTTPS"
+            label="Enable Metrics"
           />
 
-          {config.ENABLE_HTTPS && (
+          {config.METRICS_ENABLE && (
             <ConfigTextField
-              label="HTTPS Port"
-              value={config.HTTPS_PORT}
-              onChange={(value) => handleChange('HTTPS_PORT')(value)}
-              helperText="Port for HTTPS access"
+              label="Metrics Port"
+              value={config.METRICS_PORT}
+              onChange={(value) => handleChange('METRICS_PORT')(value)}
+              helperText="Port for metrics server"
             />
           )}
+
+          <ConfigTextField
+            label="Basic Auth Username"
+            value={config.BASIC_AUTH_USER}
+            onChange={(value) => handleChange('BASIC_AUTH_USER')(value)}
+            helperText="Username for basic authentication"
+          />
+
+          <ConfigTextField
+            label="Basic Auth Password"
+            value={config.BASIC_AUTH_PASS}
+            onChange={(value) => handleChange('BASIC_AUTH_PASS')(value)}
+            type="password"
+            helperText="Password for basic authentication"
+          />
 
           <Button variant="contained" onClick={handleSave}>
             {isPreInstall ? 'Install with Configuration' : 'Save Configuration'}

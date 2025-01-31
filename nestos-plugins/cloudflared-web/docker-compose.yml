@@ -5,19 +5,18 @@ services:
     container_name: cloudflared-web
     restart: unless-stopped
     environment:
-      - WEB_PORT=${WEB_PORT:-3001}
-      - CLOUDFLARED_PORT=${CLOUDFLARED_PORT:-3002}
-      - ADMIN_USERNAME=${ADMIN_USERNAME}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - ENABLE_HTTPS=${ENABLE_HTTPS:-false}
-      - HTTPS_PORT=${HTTPS_PORT:-3003}
+      - WEBUI_PORT=${WEBUI_PORT:-14333}
+      - EDGE_IP_VERSION=${EDGE_IP_VERSION:-auto}
+      - PROTOCOL=${PROTOCOL:-auto}
+      - METRICS_ENABLE=${METRICS_ENABLE:-false}
+      - METRICS_PORT=${METRICS_PORT:-60123}
+      - BASIC_AUTH_USER=${BASIC_AUTH_USER:-admin}
+      - BASIC_AUTH_PASS=${BASIC_AUTH_PASS}
     volumes:
-      - ${DATA_DIR:-/var/lib/nestos/plugins/cloudflared-web}/data:/app/data
-      - ${DATA_DIR:-/var/lib/nestos/plugins/cloudflared-web}/certs:/root/.cloudflared
+      - ${DATA_DIR:-/var/lib/nestos/plugins/cloudflared-web}/config:/config
     ports:
-      - "${WEB_PORT:-3001}:${WEB_PORT:-3001}"
-      - "${CLOUDFLARED_PORT:-3002}:${CLOUDFLARED_PORT:-3002}"
-      - "${HTTPS_PORT:-3003}:${HTTPS_PORT:-3003}"
+      - "${WEBUI_PORT:-14333}:${WEBUI_PORT:-14333}"
+      - "${METRICS_PORT:-60123}:${METRICS_PORT:-60123}"
     networks:
       - nestos
 

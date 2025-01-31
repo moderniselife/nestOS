@@ -1,0 +1,57 @@
+/* Base theme with minimal performance impact */
+:root {
+  --primary: #ff7043;
+  --primary-glow: rgba(255, 112, 67, 0.2);
+  --bg-dark: #121212;
+  --bg-paper: #1e1e1e;
+}
+
+/* Simplified background */
+.monaco-workbench {
+  background: linear-gradient(180deg, #1a1a1a, var(--bg-dark)) !important;
+}
+
+/* Optimized editor styling */
+.monaco-editor {
+  border-radius: 8px !important;
+  background: rgba(18, 18, 18, 0.7) !important;
+}
+
+/* Simplified tab styling */
+.monaco-workbench .tab {
+  margin: 4px !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(255, 112, 67, 0.1) !important;
+}
+
+.monaco-workbench .tab.active {
+  background: rgba(255, 112, 67, 0.1) !important;
+  border-color: var(--primary) !important;
+}
+
+/* Basic sidebar styling */
+.monaco-workbench .part.sidebar {
+  background: rgba(18, 18, 18, 0.8) !important;
+  border-right: 1px solid rgba(255, 112, 67, 0.1) !important;
+}
+
+/* Simple scrollbar */
+::-webkit-scrollbar {
+  width: 8px !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 112, 67, 0.3) !important;
+  border-radius: 4px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+/* Basic hover card */
+.monaco-editor .monaco-hover {
+  border-radius: 8px !important;
+  background: rgba(18, 18, 18, 0.9) !important;
+  border: 1px solid rgba(255, 112, 67, 0.2) !important;
+}

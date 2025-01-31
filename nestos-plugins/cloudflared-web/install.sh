@@ -1,22 +1,22 @@
 #!/bin/bash
 
 # Create data directories
-mkdir -p /var/lib/nestos/plugins/cloudflared-web/data
-mkdir -p /var/lib/nestos/plugins/cloudflared-web/certs
+mkdir -p /var/lib/nestos/plugins/cloudflared-web/config
 
 # Generate random password if not set
-if [ -z "$ADMIN_PASSWORD" ]; then
-    ADMIN_PASSWORD=$(openssl rand -base64 12)
+if [ -z "$BASIC_AUTH_PASS" ]; then
+    BASIC_AUTH_PASS=$(openssl rand -base64 12)
 fi
 
 # Create default configuration
 cat > /var/lib/nestos/plugins/cloudflared-web/.env << EOL
-WEB_PORT=3001
-CLOUDFLARED_PORT=3002
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=${ADMIN_PASSWORD}
-ENABLE_HTTPS=false
-HTTPS_PORT=3003
+WEBUI_PORT=14333
+EDGE_IP_VERSION=auto
+PROTOCOL=auto
+METRICS_ENABLE=false
+METRICS_PORT=60123
+BASIC_AUTH_USER=admin
+BASIC_AUTH_PASS=${BASIC_AUTH_PASS}
 DATA_DIR=/var/lib/nestos/plugins/cloudflared-web
 EOL
 

@@ -1,6 +1,6 @@
 {
   "name": "@nestos/system-service",
-  "version": "1.0.0.0",
+  "version": "0.1.1.4",
   "private": true,
   "type": "module",
   "scripts": {

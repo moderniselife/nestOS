@@ -124,6 +124,48 @@ const AppCard = styled(Paper)(({ theme }) => ({
   },
 }));
 
+const StyledDialog = styled(Dialog)(() => ({
+  '& .MuiDialog-paper': {
+    background: 'rgba(255, 255, 255, 0.1)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    color: 'white',
+  },
+}));
+
+const StyledDialogTitle = styled(DialogTitle)({
+  color: 'white',
+});
+
+const StyledTextField = styled(TextField)({
+  '& .MuiInputLabel-root': {
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  '& .MuiInputBase-input': {
+    color: 'white',
+  },
+  '& .MuiOutlinedInput-root': {
+    '& fieldset': {
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    '&:hover fieldset': {
+      borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: 'rgba(255, 255, 255, 0.5)',
+    },
+  },
+});
+
+const StyledButton = styled(Button)({
+  color: 'white',
+  borderColor: 'rgba(255, 255, 255, 0.2)',
+  '&:hover': {
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    background: 'rgba(255, 255, 255, 0.1)',
+  },
+});
+
 export default function NestLauncher(): JSX.Element {
   const [greeting, setGreeting] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -402,10 +444,10 @@ export default function NestLauncher(): JSX.Element {
             }}
           />
         </Box>
-        <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-          <DialogTitle>Welcome!</DialogTitle>
+        <StyledDialog open={openDialog} onClose={() => setOpenDialog(false)}>
+          <StyledDialogTitle>Welcome!</StyledDialogTitle>
           <DialogContent>
-            <TextField
+            <StyledTextField
               autoFocus
               margin="dense"
               label="What's your name?"
@@ -419,7 +461,8 @@ export default function NestLauncher(): JSX.Element {
             />
           </DialogContent>
           <DialogActions>
-            <Button
+            <StyledButton
+              variant="outlined"
               onClick={(e) => {
                 const input = e.currentTarget.parentElement?.parentElement?.querySelector('input');
                 if (input && input.value.trim()) {
@@ -428,9 +471,9 @@ export default function NestLauncher(): JSX.Element {
               }}
             >
               Continue
-            </Button>
+            </StyledButton>
           </DialogActions>
-        </Dialog>
+        </StyledDialog>
       </ContentContainer>
     </BackgroundContainer>
   );

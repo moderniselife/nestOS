@@ -345,7 +345,13 @@ export default function Settings(): JSX.Element {
                               .join('\n')}\n\nWould you like to update now?`
                           )
                         ) {
-                          await fetch(`${apiUrl}/api/system/updates/apply`, { method: 'POST' });
+                          await fetch(`${apiUrl}/api/system/updates/apply`, {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ target: 'system' }),
+                          });
                           window.location.reload();
                         }
                       } else {
@@ -429,7 +435,13 @@ export default function Settings(): JSX.Element {
                               .join('\n')}\n\nWould you like to update now?`
                           )
                         ) {
-                          await fetch(`${apiUrl}/api/system/updates/apply`, { method: 'POST' });
+                          await fetch(`${apiUrl}/api/system/updates/apply`, {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ target: 'nestos' }),
+                          });
                           window.location.reload();
                         }
                       } else {

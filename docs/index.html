@@ -260,11 +260,25 @@
             animation: fadeUp 0.8s ease-out forwards;
         }
 
-        .screenshot-item:nth-child(1) { animation-delay: 0.2s; }
-        .screenshot-item:nth-child(2) { animation-delay: 0.4s; }
-        .screenshot-item:nth-child(3) { animation-delay: 0.6s; }
-        .screenshot-item:nth-child(4) { animation-delay: 0.8s; }
-        .screenshot-item:nth-child(5) { animation-delay: 1.0s; }
+        .screenshot-item:nth-child(1) {
+            animation-delay: 0.2s;
+        }
+
+        .screenshot-item:nth-child(2) {
+            animation-delay: 0.4s;
+        }
+
+        .screenshot-item:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+
+        .screenshot-item:nth-child(4) {
+            animation-delay: 0.8s;
+        }
+
+        .screenshot-item:nth-child(5) {
+            animation-delay: 1.0s;
+        }
 
         .screenshot-item img {
             max-width: 100%;
@@ -476,11 +490,13 @@
                 transform: translateY(-5px);
             }
         }
+
         /* Image loading and quality optimizations */
         .screenshot-wrapper {
             position: relative;
             width: 100%;
-            padding-top: 56.25%; /* 16:9 aspect ratio */
+            padding-top: 56.25%;
+            /* 16:9 aspect ratio */
             background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
             overflow: hidden;
@@ -502,8 +518,13 @@
         }
 
         @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
         }
 
         .screenshot-item img {
@@ -533,9 +554,90 @@
             animation: pulse 1.5s ease-in-out infinite;
         }
 
+        .install-block {
+            background: var(--bg-paper);
+            border-radius: 8px;
+            margin: 2rem auto;
+            max-width: 600px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .install-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .install-title {
+            color: var(--primary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .control {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .close {
+            background: #ff5f56;
+        }
+
+        .minimize {
+            background: #ffbd2e;
+        }
+
+        .maximize {
+            background: #27c93f;
+        }
+
+        .install-code {
+            margin: 0;
+            padding: 1rem;
+            background: transparent;
+            color: #fff;
+            font-family: 'Fira Code', monospace;
+            position: relative;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 3.5rem;
+            right: 1rem;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .copy-button:hover {
+            color: var(--primary);
+            background: rgba(255, 112, 67, 0.1);
+        }
+
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         /* Prevent blurry images in Chrome */
@@ -567,6 +669,26 @@
                 <img src="assets/logo.svg" alt="NestOS Logo" class="logo">
                 <h1>Welcome to NestOS</h1>
                 <p class="subtitle">A modern, user-friendly home server operating system</p>
+
+                <div class="install-block">
+                    <div class="install-header">
+                        <span class="install-title">Install NestOS</span>
+                        <div class="window-controls">
+                            <span class="control close"></span>
+                            <span class="control minimize"></span>
+                            <span class="control maximize"></span>
+                        </div>
+                    </div>
+                    <pre
+                        class="install-code"><code>curl -fsSL https://raw.githubusercontent.com/nestOS/nasos/main/docs/install.sh | sudo bash</code></pre>
+                    <button class="copy-button" onclick="copyInstallCommand()">
+                        <svg width="16" height="16" viewBox="0 0 24 24">
+                            <path fill="currentColor"
+                                d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2z" />
+                        </svg>
+                    </button>
+                </div>
+
                 <a href="https://github.com/moderniselife/nestos" class="cta">Get Started</a>
             </div>
             <div class="scroll-indicator">
@@ -582,27 +704,32 @@
                 <h2>Interface Preview</h2>
                 <div class="screenshot-grid">
                     <div class="screenshot-item">
-                        <img src="assets/screenshots/dashboard.png" alt="Dashboard Interface" loading="lazy" decoding="async">
+                        <img src="assets/screenshots/dashboard.png" alt="Dashboard Interface" loading="lazy"
+                            decoding="async">
                         <h3>Dashboard</h3>
                         <p>Real-time system monitoring and overview</p>
                     </div>
                     <div class="screenshot-item">
-                        <img src="assets/screenshots/docker.png" alt="Docker Management" loading="lazy" decoding="async">
+                        <img src="assets/screenshots/docker.png" alt="Docker Management" loading="lazy"
+                            decoding="async">
                         <h3>Docker Management</h3>
                         <p>Container management and orchestration</p>
                     </div>
                     <div class="screenshot-item">
-                        <img src="assets/screenshots/network.png" alt="Network Configuration" loading="lazy" decoding="async">
+                        <img src="assets/screenshots/network.png" alt="Network Configuration" loading="lazy"
+                            decoding="async">
                         <h3>Network Configuration</h3>
                         <p>Network interfaces and services management</p>
                     </div>
                     <div class="screenshot-item">
-                        <img src="assets/screenshots/storage.png" alt="Storage Management" loading="lazy" decoding="async">
+                        <img src="assets/screenshots/storage.png" alt="Storage Management" loading="lazy"
+                            decoding="async">
                         <h3>Storage Management</h3>
                         <p>Disk management and volume control</p>
                     </div>
                     <div class="screenshot-item">
-                        <img src="assets/screenshots/settings.png" alt="System Settings" loading="lazy" decoding="async">
+                        <img src="assets/screenshots/settings.png" alt="System Settings" loading="lazy"
+                            decoding="async">
                         <h3>System Settings</h3>
                         <p>System configuration and preferences</p>
                     </div>
@@ -668,6 +795,24 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        function copyInstallCommand() {
+            const command = 'curl -fsSL https://raw.githubusercontent.com/moderniselife/nestos/main/install.sh | sudo bash';
+            navigator.clipboard.writeText(command);
+
+            const button = document.querySelector('.copy-button');
+            const originalHTML = button.innerHTML;
+
+            button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>';
+            button.style.color = '#27c93f';
+
+            setTimeout(() => {
+                button.innerHTML = originalHTML;
+                button.style.color = '';
+            }, 2000);
+        }
+    </script>
 </body>
 
 </html>

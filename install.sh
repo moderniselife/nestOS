@@ -33,7 +33,7 @@ apt-get upgrade -y
 
 # Install required packages
 print_status "Installing required packages"
-apt-get install -y \
+apt-get install -y --install-suggests \
     docker.io \
     nodejs \
     npm \

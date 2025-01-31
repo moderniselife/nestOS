@@ -10,7 +10,7 @@ const rootDir = execSync('git rev-parse --show-toplevel').toString().trim();
 const packageJsonPath = `${rootDir}/package.json`;
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 const currentVersion = packageJson.version;
-const [major, minor, patch] = currentVersion.split('.').map(Number);
+const [major, minor, patch, revision = 0] = currentVersion.split('.').map(Number);
 
 // Get the diff stats
 const diffStats = execSync('git diff --shortstat HEAD^ HEAD || git diff --shortstat', { cwd: rootDir }).toString();
@@ -29,13 +29,16 @@ const totalChanges = parseInt(insertions) + parseInt(deletions);
 let newVersion;
 if (totalChanges > 1000) {
   // Major change
-  newVersion = `${major + 1}.0.0`;
+  newVersion = `${major + 1}.0.0.0`;
 } else if (totalChanges > 100) {
   // Minor change
-  newVersion = `${major}.${minor + 1}.0`;
-} else {
+  newVersion = `${major}.${minor + 1}.0.0`;
+} else if (totalChanges > 10) {
   // Patch change
-  newVersion = `${major}.${minor}.${patch + 1}`;
+  newVersion = `${major}.${minor}.${patch + 1}.0`;
+} else {
+  // Revision change
+  newVersion = `${major}.${minor}.${patch}.${revision + 1}`;
 }
 
 try {

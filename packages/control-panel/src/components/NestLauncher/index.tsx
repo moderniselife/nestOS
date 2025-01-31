@@ -7,6 +7,11 @@ import {
   InputAdornment,
   styled,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
@@ -122,6 +127,45 @@ const AppCard = styled(Paper)(({ theme }) => ({
 export default function NestLauncher(): JSX.Element {
   const [greeting, setGreeting] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [openDialog, setOpenDialog] = useState(false);
+
+  const { data: userData, refetch: refetchUser } = useQuery({
+    queryKey: ['user-name'],
+    queryFn: async () => {
+      const response = await fetch(`${apiUrl}/api/system/user/name`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch user name');
+      }
+      return response.json();
+    },
+  });
+
+  useEffect(() => {
+    if (userData && !userData.name) {
+      setOpenDialog(true);
+    }
+  }, [userData]);
+
+  const saveUserName = async (name: string) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/system/user/name`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save name');
+      }
+
+      setOpenDialog(false);
+      refetchUser();
+    } catch (error) {
+      console.error('Error saving name:', error);
+    }
+  };
 
   const { data: appearanceSettings } = useQuery({
     queryKey: ['appearance-settings'],
@@ -252,7 +296,7 @@ export default function NestLauncher(): JSX.Element {
             mb: 5,
           }}
         >
-          {greeting}, {systemInfo?.hostname}.
+          {greeting}, {userData?.name || 'Guest'}.
         </Typography>
 
         <Grid container spacing={3} sx={{ mb: 6 }}>
@@ -358,6 +402,35 @@ export default function NestLauncher(): JSX.Element {
             }}
           />
         </Box>
+        <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+          <DialogTitle>Welcome!</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="What's your name?"
+              type="text"
+              fullWidth
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
+                  saveUserName((e.target as HTMLInputElement).value);
+                }
+              }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={(e) => {
+                const input = e.currentTarget.parentElement?.parentElement?.querySelector('input');
+                if (input && input.value.trim()) {
+                  saveUserName(input.value);
+                }
+              }}
+            >
+              Continue
+            </Button>
+          </DialogActions>
+        </Dialog>
       </ContentContainer>
     </BackgroundContainer>
   );

@@ -204,6 +204,10 @@ const updateSettingsSchema = z.object({
   schedule: z.enum(['hourly', 'daily']).nullable()
 });
 
+const userSettingsSchema = z.object({
+  name: z.string().min(1)
+});
+
 // interface BackupSettings {
 //   enabled: boolean;
 //   location: string;
@@ -1368,6 +1372,37 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
       return { status: 'success', message: 'Plugin uninstalled successfully' };
     } catch (error) {
       throw new Error(`Failed to uninstall plugin: ${error}`);
+    }
+  });
+
+  fastify.get('/user/name', async () => {
+    try {
+      const settingsPath = path.join(process.cwd(), 'data', 'user-settings.json');
+      try {
+        const settings = JSON.parse(await fs.readFile(settingsPath, 'utf-8'));
+        return { name: settings.name };
+      } catch {
+        return { name: null };
+      }
+    } catch (error) {
+      throw new Error(`Failed to get user name: ${error}`);
+    }
+  });
+
+  fastify.post('/user/name', async (request) => {
+    try {
+      const { name } = userSettingsSchema.parse(request.body);
+      const settingsPath = path.join(process.cwd(), 'data', 'user-settings.json');
+
+      // Create data directory if it doesn't exist
+      await fs.mkdir(path.join(process.cwd(), 'data'), { recursive: true });
+
+      // Save settings
+      await fs.writeFile(settingsPath, JSON.stringify({ name }, null, 2));
+
+      return { status: 'success', message: 'User name updated successfully' };
+    } catch (error) {
+      throw new Error(`Failed to update user name: ${error}`);
     }
   });
 };

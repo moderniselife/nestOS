@@ -70,4 +70,3 @@ packages/iso-builder/chroot/
 backups
 packages/iso-builder/output/nestos
 packages/system-service/plugins
-package-lock.json

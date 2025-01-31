@@ -14,7 +14,17 @@ export default defineConfig({
       key: resolve(__dirname, 'ssl/private.key'),
       cert: resolve(__dirname, 'ssl/certificate.crt')
     },
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    }
   },
   resolve: {
     alias: {

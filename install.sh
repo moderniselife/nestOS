@@ -87,7 +87,8 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/nestos
-ExecStart=/usr/bin/npm run start
+Environment=NODE_OPTIONS=--openssl-legacy-provider
+ExecStart=/usr/bin/npm run dev
 Restart=always
 RestartSec=10
 
@@ -105,6 +106,17 @@ systemctl start nestos.service
 print_status "Configuring network"
 systemctl enable NetworkManager
 systemctl start NetworkManager
+
+# Generate SSL certificates for Vite
+print_status "Generating SSL certificates for the control panel"
+mkdir -p /opt/nestos/packages/control-panel/ssl
+openssl req -x509 -newkey rsa:4096 -keyout /opt/nestos/packages/control-panel/ssl/private.key \
+    -out /opt/nestos/packages/control-panel/ssl/certificate.crt -days 365 -nodes \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+
+# Ensure proper permissions
+chmod 600 /opt/nestos/packages/control-panel/ssl/private.key
+chmod 644 /opt/nestos/packages/control-panel/ssl/certificate.crt
 
 # Final setup
 print_status "Performing final setup"

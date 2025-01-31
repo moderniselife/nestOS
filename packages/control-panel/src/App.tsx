@@ -9,13 +9,14 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
-      staleTime: 5000
-    }
-  }
+      staleTime: 5000,
+    },
+  },
 });
 
 // API base URL from environment or default
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL =
+  import.meta.env.VITE_API_URL || `http://${new URL(window.location.href).hostname}:3000`;
 
 function ApiCheck({ children }: { children: React.ReactNode }) {
   const { isLoading, isError, error } = useQuery({
@@ -26,17 +27,12 @@ function ApiCheck({ children }: { children: React.ReactNode }) {
         throw new Error('API is not responding');
       }
       return response.json();
-    }
+    },
   });
 
   if (isLoading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-      >
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
       </Box>
     );

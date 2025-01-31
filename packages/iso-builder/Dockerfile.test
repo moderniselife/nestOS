@@ -1,32 +1,47 @@
 FROM debian:bookworm
 
-# Set environment variables for cross-platform build
+# Set environment variables for non-interactive installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install required packages for ISO building
-RUN dpkg --add-architecture amd64 && \
-    apt-get update && apt-get install -y \
+# Add arm64 architecture support and configure APT sources
+RUN dpkg --add-architecture arm64 && \
+    rm -f /etc/apt/sources.list /etc/apt/sources.list.d/* && \
+    echo "deb [arch=amd64,arm64] http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
+    echo "deb [arch=amd64,arm64] http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    echo "deb [arch=amd64,arm64] http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list
+
+RUN apt-get update && apt-get upgrade -y && apt-get install grub-efi -y
+# RUN update-grub
+
+    # Update package lists and install required packages
+RUN apt-get update && apt-get install -y \
     debootstrap \
     grub-common \
     grub2-common \
-    grub-efi-amd64 \
-    grub-efi-amd64-bin \
     grub-pc-bin \
+    grub-efi-amd64-bin \
+    grub-efi-arm64-bin \
     mtools \
     xorriso \
     squashfs-tools \
-    genisoimage \
-    syslinux-common \
+    live-boot \
+    live-config \
     isolinux \
+    syslinux-common \
     tree \
     curl \
     sudo \
     qemu-user-static \
-    binfmt-support
+    binfmt-support \
+    genisoimage \
+    dosfstools \
+    gcc-aarch64-linux-gnu \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
@@ -35,12 +50,12 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm install -g tsx
-RUN npm install
+# Install Node.js dependencies
+RUN npm install -g tsx && \
+    npm install
 
 # Copy the rest of the application
 COPY . .
 
-# Remove the ENTRYPOINT and modify CMD to use shell form
-CMD ["bash", "-c", "npm run build:iso"]
+# Set the command to run your application
+CMD ["npm", "run", "build:iso"]

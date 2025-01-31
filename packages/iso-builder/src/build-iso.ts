@@ -11,7 +11,8 @@ const __dirname = path.dirname(__filename);
 
 const BUILD_DIR = path.join(__dirname, '../build');
 const ISO_DIR = path.join(BUILD_DIR, 'iso');
-const CHROOT_DIR = path.join(BUILD_DIR, 'chroot');
+const CHROOT_DIR_AMD64 = path.join(BUILD_DIR, 'chroot-amd64');
+const CHROOT_DIR_ARM64 = path.join(BUILD_DIR, 'chroot-arm64');
 
 async function setupBuildEnvironment() {
   const spinner = ora('Setting up build environment').start();
@@ -37,16 +38,19 @@ async function setupBuildEnvironment() {
     // Create build directories with proper permissions
     spinner.text = 'Creating build directories...';
     await fs.ensureDir(ISO_DIR);
-    await fs.ensureDir(CHROOT_DIR);
-    await fs.ensureDir(path.join(ISO_DIR, 'boot/grub'));
-    await fs.ensureDir(path.join(ISO_DIR, 'live'));
+    await fs.ensureDir(CHROOT_DIR_AMD64);
+    await fs.ensureDir(CHROOT_DIR_ARM64);
+    await fs.ensureDir(path.join(ISO_DIR, 'amd64/boot/grub'));
+    await fs.ensureDir(path.join(ISO_DIR, 'amd64/live'));
+    await fs.ensureDir(path.join(ISO_DIR, 'arm64/boot/grub'));
+    await fs.ensureDir(path.join(ISO_DIR, 'arm64/live'));
 
     // Set proper permissions
     spinner.text = 'Setting permissions...';
     await execa('chmod', ['-R', '777', BUILD_DIR]);
 
     // Verify directories were created
-    const dirs = [BUILD_DIR, ISO_DIR, CHROOT_DIR];
+    const dirs = [BUILD_DIR, ISO_DIR, CHROOT_DIR_AMD64, CHROOT_DIR_ARM64];
     for (const dir of dirs) {
       if (!await fs.pathExists(dir)) {
         throw new Error(`Failed to create directory: ${dir}`);
@@ -66,37 +70,23 @@ async function setupBuildEnvironment() {
   }
 }
 
-async function downloadBaseSystem() {
-  const spinner = ora('Downloading Debian base system').start();
+async function downloadBaseSystem(arch: 'amd64' | 'arm64') {
+  const spinner = ora(`Downloading Debian base system for ${arch}`).start();
+  const chrootDir = arch === 'amd64' ? CHROOT_DIR_AMD64 : CHROOT_DIR_ARM64;
+
   try {
-    console.log('\nStarting debootstrap with following parameters:');
-    console.log('Architecture: amd64');
-    console.log('Variant: minbase');
+    console.log(`\nStarting debootstrap for ${arch} with following parameters:`);
+    console.log(`Architecture: ${arch}`);
     console.log('Distribution: bookworm');
-    console.log('Target directory:', CHROOT_DIR);
+    console.log('Target directory:', chrootDir);
     console.log('Mirror: http://deb.debian.org/debian');
 
-    // First check if debootstrap is available
-    try {
-      await execa('which', ['debootstrap']);
-    } catch (error) {
-      throw new Error('debootstrap is not installed or not in PATH');
-    }
-
-    // Check if target directory is writable
-    try {
-      await fs.access(CHROOT_DIR, fs.constants.W_OK);
-    } catch (error) {
-      throw new Error(`Target directory ${CHROOT_DIR} is not writable`);
-    }
-
-    // Run debootstrap with verbose output
     const debootstrap = execa('debootstrap', [
-      '--arch=amd64',
-      '--variant=minbase',
+      `--arch=${arch}`,
+      '--include=linux-image-' + arch,
       '--verbose',
       'bookworm',
-      CHROOT_DIR,
+      chrootDir,
       'http://deb.debian.org/debian'
     ]);
 
@@ -111,7 +101,7 @@ async function downloadBaseSystem() {
     await debootstrap;
 
     // Verify the chroot was created properly
-    const chrootFiles = await fs.readdir(CHROOT_DIR);
+    const chrootFiles = await fs.readdir(chrootDir);
     console.log('\nFiles in chroot directory:', chrootFiles);
 
     if (!chrootFiles.includes('bin') || !chrootFiles.includes('etc')) {
@@ -131,30 +121,32 @@ async function downloadBaseSystem() {
   }
 }
 
-async function configureSystem() {
+// Update other functions to accept architecture parameter
+async function configureSystem(arch: 'amd64' | 'arm64') {
+  const chrootDir = arch === 'amd64' ? CHROOT_DIR_AMD64 : CHROOT_DIR_ARM64;
   const spinner = ora('Configuring system').start();
   try {
     // Copy system configuration files
     await fs.copy(
       path.join(__dirname, '../templates/system'),
-      path.join(CHROOT_DIR, 'etc')
+      path.join(chrootDir, 'etc')
     );
 
     // Configure hostname
     await fs.writeFile(
-      path.join(CHROOT_DIR, 'etc/hostname'),
+      path.join(chrootDir, 'etc/hostname'),
       'nestos'
     );
 
     // Configure network interfaces
     await fs.writeFile(
-      path.join(CHROOT_DIR, 'etc/network/interfaces'),
+      path.join(chrootDir, 'etc/network/interfaces'),
       'auto lo\niface lo inet loopback\n'
     );
 
     // Configure package sources
     await fs.writeFile(
-      path.join(CHROOT_DIR, 'etc/apt/sources.list'),
+      path.join(chrootDir, 'etc/apt/sources.list'),
       'deb http://deb.debian.org/debian bookworm main contrib non-free\n' +
       'deb http://security.debian.org/debian-security bookworm-security main contrib non-free\n'
     );
@@ -167,7 +159,8 @@ async function configureSystem() {
   }
 }
 
-async function installPackages() {
+async function installPackages(arch: 'amd64' | 'arm64') {
+  const chrootDir = arch === 'amd64' ? CHROOT_DIR_AMD64 : CHROOT_DIR_ARM64;
   const spinner = ora('Installing required packages').start();
   try {
     const packages = [
@@ -183,16 +176,24 @@ async function installPackages() {
       'samba',
       'nfs-kernel-server',
       'nodejs',
-      'npm'
+      'npm',
+      'grub-efi-amd64',
+      'live-boot',
+      'live-config',
+      'sudo',
+      'bash-completion',
+      'ca-certificates',
+      'locales',
+      'console-setup'
     ];
 
     await execa('chroot', [
-      CHROOT_DIR,
+      chrootDir,
       'apt-get', 'update'
     ]);
 
     await execa('chroot', [
-      CHROOT_DIR,
+      chrootDir,
       'apt-get', 'install', '-y',
       ...packages
     ]);
@@ -205,25 +206,26 @@ async function installPackages() {
   }
 }
 
-async function installNestOSComponents() {
+async function installNestOSComponents(arch: 'amd64' | 'arm64') {
+  const chrootDir = arch === 'amd64' ? CHROOT_DIR_AMD64 : CHROOT_DIR_ARM64;
   const spinner = ora('Installing NestOS components').start();
   try {
     // Create base directories
-    await fs.ensureDir(path.join(CHROOT_DIR, 'opt/nestos/system-service'));
-    await fs.ensureDir(path.join(CHROOT_DIR, 'opt/nestos/control-panel'));
+    await fs.ensureDir(path.join(chrootDir, 'opt/nestos/system-service'));
+    await fs.ensureDir(path.join(chrootDir, 'opt/nestos/control-panel'));
 
     // Try to copy components if they exist
     const systemServicePath = path.join(__dirname, '../../system-service/dist');
     const controlPanelPath = path.join(__dirname, '../../control-panel/dist');
 
     if (await fs.pathExists(systemServicePath)) {
-      await fs.copy(systemServicePath, path.join(CHROOT_DIR, 'opt/nestos/system-service'));
+      await fs.copy(systemServicePath, path.join(chrootDir, 'opt/nestos/system-service'));
     } else {
       console.warn('Warning: system-service not found, skipping...');
     }
 
     if (await fs.pathExists(controlPanelPath)) {
-      await fs.copy(controlPanelPath, path.join(CHROOT_DIR, 'opt/nestos/control-panel'));
+      await fs.copy(controlPanelPath, path.join(chrootDir, 'opt/nestos/control-panel'));
     } else {
       console.warn('Warning: control-panel not found, skipping...');
     }
@@ -231,11 +233,11 @@ async function installNestOSComponents() {
     // Copy systemd service files if they exist
     const servicesPath = path.join(__dirname, '../templates/services');
     if (await fs.pathExists(servicesPath)) {
-      await fs.copy(servicesPath, path.join(CHROOT_DIR, 'etc/systemd/system'));
-      
+      await fs.copy(servicesPath, path.join(chrootDir, 'etc/systemd/system'));
+
       // Enable services only if we copied them
       await execa('chroot', [
-        CHROOT_DIR,
+        chrootDir,
         'systemctl', 'enable',
         'nestos-system.service',
         'nestos-control-panel.service'
@@ -252,20 +254,22 @@ async function installNestOSComponents() {
   }
 }
 
-async function createISO() {
+async function createISO(arch: 'amd64' | 'arm64') {
+  const chrootDir = arch === 'amd64' ? CHROOT_DIR_AMD64 : CHROOT_DIR_ARM64;
+  const isoDir = path.join(ISO_DIR, arch);
   const spinner = ora('Creating ISO image').start();
   try {
     // Generate initramfs
     spinner.text = 'Generating initramfs...';
     const initramfsResult = await execa('chroot', [
-      CHROOT_DIR,
+      chrootDir,
       'update-initramfs', '-u', '-v'
     ]);
     console.log('Initramfs output:', initramfsResult.stdout);
 
     // Find and copy kernel and initrd
     spinner.text = 'Copying kernel and initrd...';
-    const bootFiles = await fs.readdir(path.join(CHROOT_DIR, 'boot'));
+    const bootFiles = await fs.readdir(path.join(chrootDir, 'boot'));
 
     const kernelFile = bootFiles.find(file => file.startsWith('vmlinuz-'));
     const initrdFile = bootFiles.find(file => file.startsWith('initrd.img-'));
@@ -275,33 +279,47 @@ async function createISO() {
     }
 
     await fs.copy(
-      path.join(CHROOT_DIR, 'boot', kernelFile),
-      path.join(ISO_DIR, 'boot/vmlinuz')
+      path.join(chrootDir, 'boot', kernelFile),
+      path.join(isoDir, 'boot/vmlinuz')
     );
     await fs.copy(
-      path.join(CHROOT_DIR, 'boot', initrdFile),
-      path.join(ISO_DIR, 'boot/initrd.img')
+      path.join(chrootDir, 'boot', initrdFile),
+      path.join(isoDir, 'boot/initrd.img')
     );
 
     // Create GRUB configuration
     spinner.text = 'Creating GRUB configuration...';
     const grubConfig = `
-set timeout=5
+insmod all_video
+insmod gfxterm
+insmod part_gpt
+insmod part_msdos
+
 set default=0
+set timeout=5
+set gfxmode=auto
+terminal_output gfxterm
 
 menuentry "NestOS" {
-  linux /boot/vmlinuz root=/dev/ram0 quiet
-  initrd /boot/initrd.img
+  search --no-floppy --set=root --file /live/vmlinuz
+  linux /live/vmlinuz boot=live quiet
+  initrd /live/initrd.img
+}
+
+menuentry "NestOS (Recovery Mode)" {
+  search --no-floppy --set=root --file /live/vmlinuz
+  linux /live/vmlinuz boot=live debug
+  initrd /live/initrd.img
 }
 `;
-    await fs.writeFile(path.join(ISO_DIR, 'boot/grub/grub.cfg'), grubConfig);
+    await fs.writeFile(path.join(isoDir, 'boot/grub/grub.cfg'), grubConfig);
 
     // Create squashfs of the system
     spinner.text = 'Creating squashfs filesystem...';
-    await fs.ensureDir(path.join(ISO_DIR, 'live'));
+    await fs.ensureDir(path.join(isoDir, 'live'));
     const squashfsResult = await execa('mksquashfs', [
-      CHROOT_DIR,
-      path.join(ISO_DIR, 'live/filesystem.squashfs'),
+      chrootDir,
+      path.join(isoDir, 'live/filesystem.squashfs'),
       '-comp', 'xz',
       '-info'
     ]);
@@ -312,39 +330,88 @@ menuentry "NestOS" {
     const { stdout: isoTreeOutput } = await execa('tree', [ISO_DIR]);  // Renamed from treeOutput
     console.log('ISO directory structure:', isoTreeOutput);
 
-    // Try creating ISO with grub-mkrescue first
-    try {
-      spinner.text = 'Creating ISO with grub-mkrescue...';
-      const grubResult = await execa('grub-mkrescue', [
-        '-o', path.join(BUILD_DIR, 'nestos.iso'),
-        ISO_DIR,
-        '--verbose'
-      ]);
-      console.log('GRUB mkrescue output:', grubResult.stdout);
-    } catch (grubError) {
-      console.warn('grub-mkrescue failed, falling back to genisoimage...');
-      console.error('grub-mkrescue error:', grubError);
+    spinner.text = 'Setting up EFI boot...';
+    const efiArch = arch === 'amd64' ? 'x64' : 'aa64';
+    await fs.ensureDir(path.join(isoDir, 'EFI/boot'));
 
-      // Fallback to genisoimage
-      spinner.text = 'Creating ISO with genisoimage...';
-      await execa('genisoimage', [
-        '-o', path.join(BUILD_DIR, 'nestos.iso'),
-        '-b', 'boot/grub/i386-pc/eltorito.img',
+    // Copy GRUB EFI files
+    const grubEfiSrc = arch === 'amd64'
+      ? '/usr/lib/grub/x86_64-efi/grub.efi'
+      : '/usr/lib/grub/arm64-efi/grub.efi';
+
+    await fs.copy(
+      grubEfiSrc,
+      path.join(isoDir, `EFI/boot/boot${efiArch}.efi`)
+    );
+
+    // Create EFI boot image
+    await execa('dd', [
+      'if=/dev/zero',
+      'of=' + path.join(isoDir, 'EFI/boot/efiboot.img'),
+      'bs=1M',
+      'count=4'
+    ]);
+
+    await execa('mkfs.vfat', [
+      path.join(isoDir, 'EFI/boot/efiboot.img')
+    ]);
+
+    // Try creating iso with xorriso
+    try {
+      await execa('xorriso', [
+        '-as', 'mkisofs',
+        '-iso-level', '3',
+        '-full-iso9660-filenames',
+        '-volid', `NESTOS-${arch.toUpperCase()}`,
+        '-eltorito-boot', arch === 'amd64' ? 'boot/grub/i386-pc/eltorito.img' : 'boot/grub/arm64-efi/eltorito.img',
         '-no-emul-boot',
         '-boot-load-size', '4',
         '-boot-info-table',
-        '-R',
-        '-J',
-        '-v',
-        '-T',
-        ISO_DIR
+        '--eltorito-catalog', 'boot/grub/boot.cat',
+        '--grub2-boot-info',
+        ...(arch === 'amd64' ? ['--grub2-mbr', '/usr/lib/grub/i386-pc/boot_hybrid.img'] : []),
+        '-eltorito-alt-boot',
+        '-e', 'EFI/boot/efiboot.img',
+        '-no-emul-boot',
+        '-append_partition', '2', '0xef', 'EFI/boot/efiboot.img',
+        '-output', path.join(BUILD_DIR, `nestos-${arch}.iso`),
+        path.join(ISO_DIR, arch)
       ]);
+    } catch (e) {
+      // Try creating ISO with grub-mkrescue next
+      try {
+        spinner.text = 'Creating ISO with grub-mkrescue...';
+        const grubResult = await execa('grub-mkrescue', [
+          '-o', path.join(BUILD_DIR, 'nestos.iso'),
+          ISO_DIR,
+          '--verbose'
+        ]);
+        console.log('GRUB mkrescue output:', grubResult.stdout);
+      } catch (grubError) {
+        console.warn('grub-mkrescue failed, falling back to genisoimage...');
+        console.error('grub-mkrescue error:', grubError);
 
-      // Make ISO bootable with isohybrid
-      spinner.text = 'Making ISO bootable with isohybrid...';
-      await execa('isohybrid', [
-        path.join(BUILD_DIR, 'nestos.iso')
-      ]);
+        // Fallback to genisoimage
+        spinner.text = 'Creating ISO with genisoimage...';
+        await execa('genisoimage', [
+          '-o', path.join(BUILD_DIR, 'nestos.iso'),
+          '-b', 'boot/grub/i386-pc/eltorito.img',
+          '-no-emul-boot',
+          '-boot-load-size', '4',
+          '-boot-info-table',
+          '-R',
+          '-J',
+          '-v',
+          '-T',
+          ISO_DIR
+        ]);
+
+        // Make ISO bootable with isohybrid
+        spinner.text = 'Making ISO bootable with isohybrid...';
+        await execa('isohybrid', [
+          path.join(BUILD_DIR, 'nestos.iso')
+        ]);
+      }
     }
 
     // Verify ISO was created and get its size
@@ -378,7 +445,7 @@ menuentry "NestOS" {
     console.log(finalTreeOutput);
 
     spinner.succeed('ISO image created and verified successfully');
-    
+
     // Return success without throwing any errors
     return true;
   } catch (error) {
@@ -392,22 +459,33 @@ menuentry "NestOS" {
 export async function buildIso() {
   try {
     console.log(chalk.blue('Starting NestOS ISO build process...'));
-
     await setupBuildEnvironment();
-    await downloadBaseSystem();
-    await configureSystem();
-    await installPackages();
-    await installNestOSComponents();
-    const success = await createISO();
 
-    if (success) {
-      console.log(chalk.green('\nBuild completed successfully!'));
-      console.log(chalk.white(`ISO image available at: /output/nestos.iso`));
-      process.exit(0);  // Explicitly exit with success code
-    } else {
-      console.error(chalk.red('\nBuild failed'));
-      process.exit(1);  // Explicitly exit with error code
-    }
+    // Build both architectures in parallel
+    await Promise.all([
+      (async () => {
+        console.log(chalk.yellow('\nBuilding amd64 variant...'));
+        await downloadBaseSystem('amd64');
+        await configureSystem('amd64');
+        await installPackages('amd64');
+        await installNestOSComponents('amd64');
+        return createISO('amd64');
+      })(),
+      (async () => {
+        console.log(chalk.yellow('\nBuilding arm64 variant...'));
+        await downloadBaseSystem('arm64');
+        await configureSystem('arm64');
+        await installPackages('arm64');
+        await installNestOSComponents('arm64');
+        return createISO('arm64');
+      })()
+    ]);
+
+    console.log(chalk.green('\nBuild completed successfully!'));
+    console.log(chalk.white('ISO images available at:'));
+    console.log(chalk.white('- /output/nestos-amd64.iso'));
+    console.log(chalk.white('- /output/nestos-arm64.iso'));
+    process.exit(0);
   } catch (error) {
     console.error(chalk.red('\nBuild failed:'), error);
     process.exit(1);

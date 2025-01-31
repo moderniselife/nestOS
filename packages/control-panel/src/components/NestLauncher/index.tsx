@@ -13,6 +13,53 @@ import { useQuery } from '@tanstack/react-query';
 import { apiUrl } from '../../App';
 import { useState, useEffect } from 'react';
 
+// interface StorageDevice {
+//   type: string;
+//   filesystem?: { used: number | string | undefined };
+//   mount?: string[];
+// }
+
+interface StorageDevice {
+  name: string;
+  identifier: string;
+  type: string;
+  fsType: string;
+  mount: string;
+  size: number;
+  physical: string;
+  uuid: string;
+  label: string;
+  model: string;
+  serial: string;
+  removable: boolean;
+  protocol: string;
+  group: string;
+  device: string;
+  smart: {
+    health: string;
+    attributes: string;
+  } | null;
+  layout: {
+    vendor: string;
+    type: string;
+    size: number;
+    interfaceType: string;
+    temperature: number;
+    serialNum: string;
+    firmwareRevision: string;
+  } | null;
+  filesystem: {
+    size: number;
+    used: number;
+    available: number;
+    use: number;
+  } | null;
+}
+
+interface StorageInfo {
+  devices: StorageDevice[];
+}
+
 const BackgroundContainer = styled(Box)(() => ({
   position: 'fixed',
   top: 0,
@@ -99,13 +146,64 @@ export default function NestLauncher(): JSX.Element {
   const { data: systemInfo } = useQuery({
     queryKey: ['system-info'],
     queryFn: async () => {
-      const response = await fetch(`${apiUrl}/api/system/info`);
+      const response = await fetch(`${apiUrl}/api/system/info?detailed=true`);
       if (!response.ok) {
         throw new Error('Failed to fetch system info');
       }
       return response.json();
     },
+    refetchInterval: 5000,
   });
+
+  const formatBytes = (bytes: number): string => {
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    if (bytes === 0) return '0 B';
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+  };
+
+  const { data: storageInfo } = useQuery<StorageInfo>({
+    queryKey: ['storage-info'],
+    queryFn: async () => {
+      const response = await fetch(`${apiUrl}/api/storage/devices`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch storage info');
+      }
+      return response.json();
+    },
+    refetchInterval: 10000,
+  });
+
+  // Calculate total storage usage
+  const calculateStorageUsage = () => {
+    if (!storageInfo?.devices) return { used: 0, total: 0 };
+
+    const mainDevice = storageInfo.devices[0];
+    let totalUsed = 0;
+
+    if (mainDevice.filesystem?.used !== undefined) {
+      totalUsed = mainDevice.filesystem.used;
+    } else {
+      const partitions = storageInfo.devices.filter(
+        (dev: StorageDevice) =>
+          dev.type === 'part' &&
+          dev.filesystem?.used !== undefined &&
+          !dev.mount?.includes('boot') &&
+          !dev.mount?.includes('efi')
+      );
+      totalUsed = partitions.reduce(
+        (acc: number, dev: StorageDevice) => acc + (dev.filesystem?.used || 0),
+        0
+      );
+    }
+
+    return {
+      used: totalUsed,
+      total: mainDevice.size,
+    };
+  };
+
+  const storage = calculateStorageUsage();
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -160,10 +258,10 @@ export default function NestLauncher(): JSX.Element {
                 Storage
               </Typography>
               <Typography variant="h4" color="white">
-                {Math.round((systemInfo?.storage?.used || 0) / 1024 / 1024 / 1024)} GB
+                {formatBytes(storage.used)}
               </Typography>
               <Typography variant="body2" color="rgba(255,255,255,0.7)">
-                / {Math.round((systemInfo?.storage?.total || 0) / 1024 / 1024 / 1024)} GB
+                / {formatBytes(storage.total)} ({Math.round((storage.used / storage.total) * 100)}%)
               </Typography>
             </StatsCard>
           </Grid>
@@ -173,10 +271,14 @@ export default function NestLauncher(): JSX.Element {
                 Memory
               </Typography>
               <Typography variant="h4" color="white">
-                {Math.round((systemInfo?.memory?.used || 0) / 1024 / 1024 / 1024)} GB
+                {formatBytes(systemInfo?.memory?.used || 0)}
               </Typography>
               <Typography variant="body2" color="rgba(255,255,255,0.7)">
-                / {Math.round((systemInfo?.memory?.total || 0) / 1024 / 1024 / 1024)} GB
+                / {formatBytes(systemInfo?.memory?.total || 0)} (
+                {Math.round(
+                  ((systemInfo?.memory?.used || 0) / (systemInfo?.memory?.total || 1)) * 100
+                )}
+                %)
               </Typography>
             </StatsCard>
           </Grid>
@@ -186,10 +288,10 @@ export default function NestLauncher(): JSX.Element {
                 CPU
               </Typography>
               <Typography variant="h4" color="white">
-                {systemInfo?.cpu?.usage || 0}%
+                {Math.round(systemInfo?.load?.currentLoad || 0)}%
               </Typography>
               <Typography variant="body2" color="rgba(255,255,255,0.7)">
-                {systemInfo?.cpu?.cores} cores
+                {systemInfo?.cpu?.cores} cores @ {systemInfo?.cpu?.brand}
               </Typography>
             </StatsCard>
           </Grid>

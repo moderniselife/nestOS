@@ -157,7 +157,9 @@ export default function NestLauncher(): JSX.Element {
 
   const formatBytes = (bytes: number): string => {
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) {
+      return '0 B';
+    }
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
   };
@@ -176,7 +178,9 @@ export default function NestLauncher(): JSX.Element {
 
   // Calculate total storage usage
   const calculateStorageUsage = () => {
-    if (!storageInfo?.devices) return { used: 0, total: 0 };
+    if (!storageInfo?.devices) {
+      return { used: 0, total: 0 };
+    }
 
     const mainDevice = storageInfo.devices[0];
     let totalUsed = 0;

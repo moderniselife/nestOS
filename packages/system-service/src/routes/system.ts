@@ -1324,6 +1324,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
               heredocMarker = heredocMatch[1];
               currentCommand = `${line}\n`;
             } else if (line.includes('docker')) {
+              console.log('Executing Docker command:', { line, id, pluginDir })
               await executeDockerCommand(line, id, pluginDir);
             } else {
               await runPrivilegedCommand(line);

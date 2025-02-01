@@ -12,4 +12,5 @@ DATA_DIR=/var/lib/nestos/plugins/vscode-server
 EOL
 
 # Start the container
+docker pull linuxserver/code-server
 docker compose up -d

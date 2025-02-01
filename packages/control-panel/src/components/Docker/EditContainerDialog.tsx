@@ -436,8 +436,7 @@ export function EditContainerDialog({
       })),
       volumes: volumes.map((v) => ({
         container: v.container,
-        host:
-          v.host.startsWith('.') || !v.host.startsWith('/') ? `${process.cwd()}/${v.host}` : v.host,
+        host: v.host.startsWith('/') ? v.host : `/${v.host}`,
         mode: v.mode,
       })),
       env: Object.fromEntries(envVars.map((e) => [e.key, e.value])),

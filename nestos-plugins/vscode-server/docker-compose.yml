@@ -4,9 +4,10 @@ services:
     image: lscr.io/linuxserver/code-server:latest
     container_name: vscode-server
     restart: unless-stopped
+    privileged: true
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=0
+      - PGID=0
       - TZ=${TZ:-Etc/UTC}
       - PASSWORD=${PASSWORD}
       - PROXY_DOMAIN=${DOMAIN}

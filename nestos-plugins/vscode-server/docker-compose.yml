@@ -1,0 +1,16 @@
+version: '3'
+services:
+  code-server:
+    image: codercom/code-server:latest
+    container_name: vscode-server
+    restart: unless-stopped
+    environment:
+      - PASSWORD=${PASSWORD}
+      - PROXY_DOMAIN=${DOMAIN}
+    volumes:
+      - ${DATA_DIR:-/var/lib/nestos/plugins/vscode-server}/config:/home/coder/.config
+      - ${DATA_DIR:-/var/lib/nestos/plugins/vscode-server}/data:/home/coder/project
+    ports:
+      - '${PORT:-8200}:8080'
+    networks:
+      - nestos

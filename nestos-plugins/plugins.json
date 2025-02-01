@@ -31,5 +31,16 @@
     "icon": "https://raw.githubusercontent.com/moderniselife/nestos/main/nestos-plugins/icons/cloudflared.png",
     "category": "Networking",
     "tags": ["cloudflare", "tunnel", "proxy", "networking", "docker"]
+  },
+  {
+    "id": "vscode-server",
+    "name": "VS Code Server",
+    "description": "Code-server is VS Code running on a remote server, accessible through the browser",
+    "version": "1.0.0",
+    "author": "NestOS Community",
+    "repository": "https://github.com/moderniselife/nestos-plugin-vscode-server",
+    "icon": "https://raw.githubusercontent.com/moderniselife/nestos/main/nestos-plugins/icons/vscode.jpg",
+    "category": "Development",
+    "tags": ["ide", "development", "coding", "docker"]
   }
 ]

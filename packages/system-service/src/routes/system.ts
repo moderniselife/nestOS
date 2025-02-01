@@ -928,7 +928,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         // Rebuild
         await execAsync('npm run build');
         // Restart services
-        await execAsync('systemctl restart nestos-system nestos-control-panel');
+        await execAsync('systemctl restart nestos.service');
       }
 
       return {
@@ -992,7 +992,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         // Add new auto-update entry based on schedule
         const schedule = body.schedule || 'hourly';
         const cronExpression = schedule === 'hourly' ? '0 * * * *' : '0 0 * * *';
-        currentCrontab += `\n${cronExpression} cd ${process.cwd()} && git pull origin main && npm run build && systemctl restart nestos-system nestos-control-panel`;
+        currentCrontab += `\n${cronExpression} cd ${process.cwd()} && git pull origin main && npm run build && systemctl restart nestos.service`;
       }
 
       // Write new crontab

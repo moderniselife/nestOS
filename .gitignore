@@ -71,3 +71,4 @@ backups
 packages/iso-builder/output/nestos
 packages/system-service/plugins
 packages/system-service/data/user-settings.json
+packages/system-service/data/appearance.json

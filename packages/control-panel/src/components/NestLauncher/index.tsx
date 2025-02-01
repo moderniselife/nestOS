@@ -71,7 +71,7 @@ const BackgroundContainer = styled(Box)(() => ({
   left: 0,
   right: 0,
   bottom: 0,
-  backgroundImage: 'var(--background-image, url(/backgrounds/mountain-night.jpg))',
+  backgroundImage: 'var(--background-image, url(/backgrounds/abstract-dark.jpg))',
   backgroundSize: 'cover',
   backgroundPosition: 'center',
   zIndex: -1,

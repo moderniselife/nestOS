@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import {
   Box,
   AppBar,
@@ -27,6 +27,7 @@ import Settings from '../Settings';
 import Plugins from '../Plugins';
 import NestLauncher from '../NestLauncher';
 import { apiUrl } from '../../App';
+import { AppearanceContext } from '../FrostedGlassProvider';
 
 const drawerWidth = 240;
 
@@ -57,6 +58,7 @@ export default function Layout(): JSX.Element {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { useFrostedGlass } = useContext(AppearanceContext);
 
   const { data: systemInfo, isLoading: systemLoading } = useQuery({
     queryKey: ['system-info'],
@@ -83,11 +85,14 @@ export default function Layout(): JSX.Element {
   };
 
   const isLauncherPage = location.pathname === '/';
-  const glassStyle = isLauncherPage ? {
-    background: 'rgba(255, 255, 255, 0.1)',
-    backdropFilter: 'blur(10px)',
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  } : {};
+  const glassStyle =
+    isLauncherPage || useFrostedGlass
+      ? {
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          borderColor: 'rgba(255, 255, 255, 0.2)',
+        }
+      : {};
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -96,9 +101,10 @@ export default function Layout(): JSX.Element {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
-          backgroundColor: isLauncherPage ? 'transparent' : 'background.paper',
+          backgroundColor: isLauncherPage || useFrostedGlass ? 'transparent' : 'background.paper',
           borderBottom: '1px solid',
-          borderColor: isLauncherPage ? 'rgba(255, 255, 255, 0.2)' : theme.palette.divider,
+          borderColor:
+            isLauncherPage || useFrostedGlass ? 'rgba(255, 255, 255, 0.2)' : theme.palette.divider,
           ...glassStyle,
         }}
       >
@@ -118,7 +124,7 @@ export default function Layout(): JSX.Element {
             component="div"
             sx={{
               flexGrow: 1,
-              color: isLauncherPage ? 'white' : 'text.primary',
+              color: isLauncherPage || useFrostedGlass ? 'white' : 'text.primary',
             }}
           >
             {getPageTitle(location.pathname)}
@@ -157,11 +163,11 @@ export default function Layout(): JSX.Element {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
-              ...(isLauncherPage && glassStyle),
+              ...((isLauncherPage || useFrostedGlass) && glassStyle),
             },
           }}
         >
-          <Sidebar isGlassMode={isLauncherPage} />
+          <Sidebar isGlassMode={isLauncherPage || useFrostedGlass} />
         </Drawer>
         <Drawer
           variant="permanent"
@@ -171,14 +177,18 @@ export default function Layout(): JSX.Element {
               boxSizing: 'border-box',
               width: drawerWidth,
               borderRight: '1px solid',
-              borderColor: isLauncherPage ? 'rgba(255, 255, 255, 0.2)' : theme.palette.divider,
-              backgroundColor: isLauncherPage ? 'transparent' : 'background.paper',
+              borderColor:
+                isLauncherPage || useFrostedGlass
+                  ? 'rgba(255, 255, 255, 0.2)'
+                  : theme.palette.divider,
+              backgroundColor:
+                isLauncherPage || useFrostedGlass ? 'transparent' : 'background.paper',
               ...glassStyle,
             },
           }}
           open
         >
-          <Sidebar isGlassMode={isLauncherPage} />
+          <Sidebar isGlassMode={isLauncherPage || useFrostedGlass} />
         </Drawer>
       </Box>
 
@@ -189,7 +199,7 @@ export default function Layout(): JSX.Element {
           p: location.pathname === '/' ? 0 : 3,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           mt: '64px', // AppBar height
-          backgroundColor: 'background.default',
+          backgroundColor: useFrostedGlass ? 'transparent' : 'background.default',
         }}
       >
         <Routes>

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { BrowserRouter } from 'react-router-dom';
 import { theme } from './theme.js';
 import Layout from './components/Layout';
+import FrostedGlassProvider from './components/FrostedGlassProvider/index.js';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,7 +62,9 @@ function App(): JSX.Element {
         <CssBaseline />
         <BrowserRouter>
           <ApiCheck>
-            <Layout />
+            <FrostedGlassProvider>
+              <Layout />
+            </FrostedGlassProvider>
           </ApiCheck>
         </BrowserRouter>
       </ThemeProvider>

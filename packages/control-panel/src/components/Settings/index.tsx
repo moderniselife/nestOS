@@ -40,6 +40,7 @@ interface BackupSettings {
 }
 interface AppearanceSettings {
   background: string;
+  useFrostedGlass: boolean;
 }
 
 export default function Settings(): JSX.Element {
@@ -290,26 +291,54 @@ export default function Settings(): JSX.Element {
           </Card>
         </Grid>
 
+        {/* Appearance */}
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Appearance
               </Typography>
-              <FormControl fullWidth variant="outlined" size="small">
-                <InputLabel>Background</InputLabel>
-                <Select
-                  value={appearanceSettings?.background || 'mountain-night'}
-                  onChange={(e) => handleAppearanceSettings({ background: e.target.value })}
-                  label="Background"
-                >
-                  <MenuItem value="mountain-night">Mountain Night</MenuItem>
-                  <MenuItem value="abstract-dark">Abstract Dark</MenuItem>
-                  <MenuItem value="forest-mist">Forest Mist</MenuItem>
-                  <MenuItem value="ocean-dark">Ocean Dark</MenuItem>
-                  <MenuItem value="space">Space</MenuItem>
-                </Select>
-              </FormControl>
+              <Stack spacing={2}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <InputLabel>Background</InputLabel>
+                  <Select
+                    value={appearanceSettings?.background || 'abstract-dark'}
+                    onChange={(e) =>
+                      handleAppearanceSettings({
+                        ...appearanceSettings,
+                        background: e.target.value,
+                      })
+                    }
+                    label="Background"
+                  >
+                    <MenuItem value="mountain-night">Mountain Night</MenuItem>
+                    <MenuItem value="abstract-dark">Abstract Dark</MenuItem>
+                    <MenuItem value="forest-mist">Forest Mist</MenuItem>
+                    <MenuItem value="ocean-dark">Ocean Dark</MenuItem>
+                    <MenuItem value="space">Space</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={appearanceSettings?.useFrostedGlass ?? false}
+                      onChange={(e) =>
+                        handleAppearanceSettings({
+                          ...appearanceSettings,
+                          useFrostedGlass: e.target.checked,
+                        })
+                      }
+                    />
+                  }
+                  label="Use Frosted Glass Theme"
+                />
+
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  The frosted glass theme applies the Nest Launcher&apos;s modern, translucent
+                  design across all pages.
+                </Alert>
+              </Stack>
             </CardContent>
           </Card>
         </Grid>

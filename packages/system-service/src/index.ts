@@ -7,7 +7,7 @@ import { dockerRoutes } from './routes/docker.js';
 import { networkRoutes } from './routes/network.js';
 import { pluginRoutes } from './routes/plugins.js';
 import { setupWebSocketHandlers } from './websocket/index.js';
-import appearanceRoutes from './routes/system/appearance.js';
+import appearanceRoutes from './routes/appearance.js';
 
 const fastify = Fastify({
   logger: true,

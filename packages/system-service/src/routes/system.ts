@@ -1204,7 +1204,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get('/plugins', async () => {
     try {
-      const response = await axios.get('https://raw.githubusercontent.com/moderniselife/nestos/main/nestos-plugins/plugins.json');
+      const response = await axios.get(`https://raw.githubusercontent.com/moderniselife/nestos/main/nestos-plugins/plugins.json?t=${new Date().getTime()}`);
       const plugins = response.data;
 
       for (const plugin of plugins) {

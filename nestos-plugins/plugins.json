@@ -42,5 +42,16 @@
     "icon": "https://raw.githubusercontent.com/moderniselife/nestos/main/nestos-plugins/icons/vscode.jpg",
     "category": "Development",
     "tags": ["ide", "development", "coding", "docker"]
+  },
+  {
+    "id": "vscode-server-armhf",
+    "name": "VS Code Server (ARMHF/ARMv7/Raspberry Pi)",
+    "description": "ARM/RPi compatible Code-server is VS Code running on a remote server, accessible through the browser",
+    "version": "1.0.0",
+    "author": "NestOS Community",
+    "repository": "https://github.com/moderniselife/nestos-plugin-code-server",
+    "icon": "https://raw.githubusercontent.com/moderniselife/nestos/main/nestos-plugins/icons/vscode.jpg",
+    "category": "Development",
+    "tags": ["ide", "development", "coding", "docker", "armhf", "armv7", "raspberry-pi"]
   }
 ]

@@ -14,17 +14,33 @@ const getRemoteConfig = async (repository: string): Promise<string | null> => {
         const [, owner, repo] = repository.match(/github\.com\/([^/]+)\/([^/]+)/) || [];
         if (!owner || !repo) { return null; }
 
-        const timestamp = Date.now();
-        const response = await axios.get(
-            `https://raw.githubusercontent.com/${owner}/${repo}/refs/heads/main/ui/config.tsx?t=${timestamp}`,
-            {
-                headers: {
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
+        const branches = ['main', 'master', 'develop'];
+
+        for (const branch of branches) {
+            try {
+                const timestamp = Date.now();
+                const response = await axios.get(
+                    `https://raw.githubusercontent.com/${owner}/${repo}/refs/heads/${branch}/ui/config.tsx?t=${timestamp}`,
+                    {
+                        headers: {
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        }
+                    }
+                );
+
+                return response.data;
+
+            } catch (e) {
+                if ((e as unknown as { response: { status: number } }).response?.status === 404) {
+                    continue;
+                } else {
+                    throw e;
                 }
             }
-        );
-        return response.data;
+        }
+
+        return null;
     } catch {
         return null;
     }

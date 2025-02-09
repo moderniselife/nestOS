@@ -1,6 +1,16 @@
 version: '3.8'
 
 services:
+  novnc:
+    image: theasp/novnc:latest
+    environment:
+      - NOVNC_TITLE=NASOS VM Console
+      - NOVNC_PORT=8080
+      - NOVNC_VNC_PORT=5900
+    ports:
+      - '6080:8080'
+    networks:
+      - nasos-network
   control-panel:
     build:
       context: .
@@ -19,6 +29,8 @@ services:
     depends_on:
       - system-service
     command: sh -c "npm install && npm run dev"
+    networks:
+      - nasos-network
 
   system-service:
     build:
@@ -26,6 +38,7 @@ services:
       dockerfile: packages/system-service/Dockerfile.dev
     ports:
       - '3000:3000'
+      - '5900:5900' # Add this line for VNC connection
     volumes:
       - .:/workspace
       - /workspace/node_modules
@@ -42,3 +55,9 @@ services:
       - SYS_ADMIN
       - NET_ADMIN
     command: sh -c "npm install && npm run dev"
+    networks:
+      - nasos-network
+
+networks:
+  nasos-network:
+    driver: bridge

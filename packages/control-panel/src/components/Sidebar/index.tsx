@@ -18,6 +18,7 @@ import {
   Dashboard as DashboardIcon,
   Extension as ExtensionIcon,
   Apps as AppsIcon,
+  Computer as VMsIcon,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -31,6 +32,7 @@ const menuItems = [
   { text: 'Docker', icon: <DockerIcon />, path: '/docker' },
   { text: 'Network', icon: <NetworkIcon />, path: '/network' },
   { text: 'Plugins', icon: <ExtensionIcon />, path: '/plugins' },
+  { text: 'VMs', icon: <VMsIcon />, path: '/vms' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
 ];
 

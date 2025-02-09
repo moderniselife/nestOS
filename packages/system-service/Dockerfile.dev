@@ -10,8 +10,17 @@ RUN apt-get update && \
     procps \
     iproute2 \
     iputils-ping \
-    git && \
-    apt-get clean && \
+    git \
+    qemu-system-x86 \
+    qemu-utils \
+    qemu-system-arm \
+    qemu-efi \
+    qemu-user-static \
+    bridge-utils \
+    uml-utilities \
+    cpu-checker \
+    libvirt-clients \
+    && apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /var/cache/apt/archives/*
 

@@ -8,6 +8,7 @@ import { networkRoutes } from './routes/network.js';
 import { pluginRoutes } from './routes/plugins.js';
 import { setupWebSocketHandlers } from './websocket/index.js';
 import appearanceRoutes from './routes/appearance.js';
+import { qemuRoutes } from './routes/qemu.js';
 
 const fastify = Fastify({
   logger: true,
@@ -30,7 +31,7 @@ await fastify.register(websocket, {
 fastify.get('/', async () => {
   return {
     status: 'ok',
-    version: '0.1.0',
+    version: '0.1.1.7',
     services: {
       system: '/api/system',
       storage: '/api/storage',
@@ -38,6 +39,7 @@ fastify.get('/', async () => {
       network: '/api/network',
       plugins: '/api/plugins',
       appearance: '/api/appearance',
+      qemu: '/api/qemu',
       websocket: '/ws'
     }
   };
@@ -50,6 +52,7 @@ await fastify.register(dockerRoutes, { prefix: '/api/docker' });
 await fastify.register(networkRoutes, { prefix: '/api/network' });
 await fastify.register(pluginRoutes, { prefix: '/api/plugins' });
 await fastify.register(appearanceRoutes, { prefix: '/api/appearance' })
+await fastify.register(qemuRoutes, { prefix: '/api/qemu' })
 
 // Setup WebSocket handlers for real-time updates
 setupWebSocketHandlers(fastify);

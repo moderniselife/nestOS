@@ -26,6 +26,7 @@ import Network from '../Network';
 import Settings from '../Settings';
 import Plugins from '../Plugins';
 import NestLauncher from '../NestLauncher';
+import QEMU from '../QEMU';
 import { apiUrl } from '../../App';
 import { AppearanceContext } from '../FrostedGlassProvider';
 
@@ -46,6 +47,8 @@ const getPageTitle = (pathname: string): string => {
       return 'Network Settings';
     case '/plugins':
       return 'Plugin Management';
+    case '/vms':
+      return 'VMs';
     case '/settings':
       return 'System Settings';
     default:
@@ -209,6 +212,7 @@ export default function Layout(): JSX.Element {
           <Route path="/docker" element={<Docker />} />
           <Route path="/network" element={<Network />} />
           <Route path="/plugins" element={<Plugins />} />
+          <Route path="/vms" element={<QEMU />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

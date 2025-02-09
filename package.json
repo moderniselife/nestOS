@@ -8,7 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "node scripts/check-sudo.js && concurrently \"npm run dev:control-panel\" \"npm run dev:system-service\"",
+    "dev": "node scripts/check-sudo.js && concurrently \"npm run watch-deps\" \"npm run dev:control-panel\" \"npm run dev:system-service\"",
+    "watch-deps": "nodemon --watch 'packages/*/package.json' --watch package.json --exec 'npm install && npm install --workspaces'",
     "dev:control-panel": "cd packages/control-panel && npm run dev",
     "dev:system-service": "cd packages/system-service && npm run dev",
     "build": "turbo run build --filter=!./packages/iso-builder",
@@ -24,6 +25,7 @@
     "concurrently": "^9.1.2",
     "eslint-plugin-react": "^7.37.4",
     "globby": "^14.0.2",
+    "nodemon": "^3.1.9",
     "sharp": "^0.33.5",
     "turbo": "^2.3.4",
     "typescript": "^5.7.3"

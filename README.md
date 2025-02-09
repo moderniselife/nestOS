@@ -2,7 +2,7 @@
 
 > 🏠 A modern, user-friendly home server operating system built with TypeScript and Debian
 
-NestOS is designed to make home server management simple and beautiful. It provides an intuitive web interface for managing storage, containers, and network services, all while maintaining the power and flexibility of a Debian-based system.
+NestOS is designed to make home server management simple and beautiful. It provides an intuitive web interface for managing storage, containers, virtual machines, and network services, all while maintaining the power and flexibility of a Debian-based system.
 
 ## ✨ Features
 
@@ -11,6 +11,10 @@ Current Features:
 - 🚀 Beautiful Nest Launcher with frosted-glass design
 - 🔌 Powerful plugin system for easy app installation
 - 🐳 Advanced Docker container management
+- 💻 QEMU/KVM virtual machine management
+- 🍎 macOS virtualization support
+- 🪟 Windows virtualization support
+- 🐧 Linux virtualization support
 - 🔍 Docker Hub and GitHub Container Registry integration
 - 💾 Smart storage management and monitoring
 - 🌐 Network service configuration

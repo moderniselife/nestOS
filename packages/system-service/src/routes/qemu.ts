@@ -6,6 +6,9 @@ import fsSync from 'fs';
 import path from 'path';
 import multipart from '@fastify/multipart';
 import https from 'https';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+const execAsync = promisify(exec);
 
 const VM_DIR = '/etc/qemu/vms';
 const ISO_DIR = '/etc/qemu/isos';
@@ -26,6 +29,11 @@ const vmSchema = z.object({
     useKvm: z.boolean().optional(),
     cpuModel: z.string().optional(),
     template: z.string().optional(),
+    leechcore: z.object({
+        enabled: z.boolean(),
+        shmName: z.string().optional(),
+        qmpSocket: z.string().optional(),
+    }).optional(),
 });
 
 // Add template configurations
@@ -37,7 +45,6 @@ const VM_TEMPLATES = {
         network: { type: 'user' },
         vnc: true,
         extraArgs: [
-            '-cpu', 'host,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time',
             '-device', 'virtio-gpu-pci',
             '-device', 'virtio-net-pci',
             '-device', 'virtio-balloon-pci',
@@ -175,6 +182,14 @@ export const qemuRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         const sanitizedName = vm.name.replace(/\s+/g, '-');
         const vmPath = path.join(VM_DIR, sanitizedName);
 
+        if (vm.leechcore?.enabled) {
+            try {
+                await setupLeechCorePlugins();
+            } catch (error) {
+                throw new Error(`Failed to setup LeechCore and plugins: ${error}`);
+            }
+        }
+
         // Check if virtio drivers exist
         if (!fsSync.existsSync(VIRTIO_ISO_PATH)) {
             try {
@@ -201,7 +216,7 @@ export const qemuRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
 
             const logPath = path.join(vmPath, 'qemu.log');
             const config = JSON.parse(await fs.readFile(path.join(vmPath, 'config.json'), 'utf-8'));
-            const qemuCmd = buildQEMUCommand(vm.name, config);
+            const qemuCmd = await buildQEMUCommand(vm.name, config);
 
             // Log the command being executed
             await fs.appendFile(logPath, `[${new Date().toISOString()}] Starting VM with command:\n${qemuCmd}\n\n`);
@@ -439,7 +454,15 @@ export const qemuRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
 
         try {
             const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
-            const qemuCmd = buildQEMUCommand(name, config);
+            const qemuCmd = await buildQEMUCommand(name, config);
+
+            if (config.leechcore?.enabled) {
+                try {
+                    await setupLeechCorePlugins();
+                } catch (error) {
+                    throw new Error(`Failed to setup LeechCore and plugins: ${error}`);
+                }
+            }
 
             // Log the command being executed
             await fs.appendFile(logPath, `[${new Date().toISOString()}] Starting VM with command:\n${qemuCmd}\n\n`);
@@ -944,13 +967,128 @@ async function downloadVirtIODrivers(): Promise<void> {
     });
 }
 
-function buildQEMUCommand(name: string, config: z.infer<typeof vmSchema>): string {
+async function isLeechCoreInstalled(): Promise<boolean> {
+    try {
+        // Check for required libraries
+        await execAsync('ls /usr/local/lib/leechcore.so');
+        await execAsync('ls /usr/local/lib/vmm.so');
+        await execAsync('ls /usr/local/lib/leechcore_device_qemu.so');
+
+        // Check for MemProcFS binary
+        await execAsync('ls /usr/local/bin/memprocfs');
+
+        // Check for proper permissions
+        const leechcorePerms = (await execAsync('stat -c %a /usr/local/lib/leechcore.so')).stdout;
+        const vmmPerms = (await execAsync('stat -c %a /usr/local/lib/vmm.so')).stdout;
+        const qemuPluginPerms = (await execAsync('stat -c %a /usr/local/lib/leechcore_device_qemu.so')).stdout;
+        const memprocfsPerms = (await execAsync('stat -c %a /usr/local/bin/memprocfs')).stdout;
+
+        // Verify permissions (should be 755 or similar)
+        if (!leechcorePerms.trim().startsWith('7') ||
+            !vmmPerms.trim().startsWith('7') ||
+            !qemuPluginPerms.trim().startsWith('7') ||
+            !memprocfsPerms.trim().startsWith('7')) {
+            return false;
+        }
+
+        // Check if /dev/shm exists and has correct permissions
+        await execAsync('test -d /dev/shm');
+        const shmPerms = (await execAsync('stat -c %a /dev/shm')).stdout;
+        if (!shmPerms.trim().startsWith('7')) {
+            return false;
+        }
+
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function setupLeechCorePlugins(): Promise<void> {
+    // Check if already installed
+    if (await isLeechCoreInstalled()) {
+        console.log('LeechCore and plugins already installed, skipping setup');
+        return;
+    }
+
+    try {
+        // Clean up any failed previous installations
+        await execAsync('rm -rf LeechCore MemProcFS LeechCore-plugins');
+
+        // Install build dependencies
+        await execAsync('apt-get update');
+        await execAsync('apt-get install -y build-essential git gcc cmake pkg-config sudo libusb-1.0 libusb-1.0-0-dev libfuse2 libfuse-dev libpython3-dev lz4 liblz4-dev');
+
+        // Clone LeechCore and MemProcFS
+        await execAsync(`
+            git clone https://github.com/ufrisk/LeechCore.git && 
+            git clone https://github.com/ufrisk/MemProcFS.git
+        `);
+
+        // Build LeechCore first
+        await execAsync(`
+            cd LeechCore/leechcore && 
+            make && 
+            sudo mkdir -p /usr/local/lib && 
+            sudo cp ../files/leechcore.so /usr/local/lib/ &&
+            sudo ldconfig
+        `);
+
+        // Build MemProcFS components in order
+        await execAsync(`
+            cd MemProcFS/vmm && 
+            make &&
+            cd ../memprocfs &&
+            cp ../files/vmm.so . &&
+            cp /usr/local/lib/leechcore.so . &&
+            make &&
+            sudo cp ../files/memprocfs /usr/local/bin/ &&
+            cd ../vmmpyc &&
+            cp ../files/vmm.so . &&
+            cp /usr/local/lib/leechcore.so . &&
+            make &&
+            sudo ldconfig
+        `);
+
+        // Clone and build LeechCore plugins
+        await execAsync(`
+            git clone https://github.com/ufrisk/LeechCore-plugins.git && 
+            cd LeechCore-plugins && 
+            mkdir -p files &&
+            cp /usr/local/lib/leechcore.so . &&
+            cp /usr/local/lib/leechcore.so ./files/ &&
+            make -C leechcore_ft601_driver_linux && 
+            make -C leechcore_device_rawtcp && 
+            make -C leechcore_device_qemu && 
+            sudo cp files/leechcore_ft601_driver_linux.so /usr/local/lib/ && 
+            sudo cp files/leechcore_device_rawtcp.so /usr/local/lib/ && 
+            sudo cp files/leechcore_device_qemu.so /usr/local/lib/ && 
+            sudo chmod 755 /usr/local/lib/leechcore_device_qemu.so &&
+            sudo chmod 755 /usr/local/lib/leechcore_ft601_driver_linux.so &&
+            sudo chmod 755 /usr/local/lib/leechcore_device_rawtcp.so &&
+            sudo chmod 755 /usr/local/lib/leechcore.so &&
+            sudo chmod 755 /usr/local/bin/memprocfs &&
+            sudo chmod 666 /dev/shm/* &&
+            sudo ldconfig && 
+            sudo mkdir -p /tmp &&
+            sudo chmod 777 /tmp
+        `);
+
+        // Clean up after successful installation
+        // await execAsync('rm -rf LeechCore MemProcFS LeechCore-plugins');
+
+    } catch (error) {
+        // Clean up on failure
+        await execAsync('rm -rf LeechCore MemProcFS LeechCore-plugins').catch(() => { });
+        console.error('Failed to setup LeechCore and plugins:', error);
+        throw new Error(`LeechCore setup failed: ${error}`);
+    }
+}
+
+async function buildQEMUCommand(name: string, config: z.infer<typeof vmSchema>): Promise<string> {
     const vmPath = path.join(VM_DIR, name);
     const isWindowsISO = config.iso?.toLowerCase().includes('win');
     const isMacOS = config.template === 'macos';
-
-    const defaultCpuModel = process.env.CONTAINER_ENV ? 'qemu64' : 'host';
-    const cpuModel = config.cpuModel || (isWindowsISO ? 'Nehalem' : defaultCpuModel);
 
     const cmd = [
         'qemu-system-x86_64',
@@ -972,11 +1110,10 @@ function buildQEMUCommand(name: string, config: z.infer<typeof vmSchema>): strin
             '-device', 'usb-kbd',
             '-device', 'usb-tablet'
         );
-    } if (isWindowsISO) {
+    } else if (isWindowsISO) {
         cmd.push(
             '-machine', 'type=pc,vmport=off',
             '-accel', 'accel=tcg,thread=multi',
-            '-device', 'virtio-balloon-pci',
             '-device', 'intel-hda',
             '-device', 'hda-duplex',
             '-device', 'qemu-xhci',
@@ -988,14 +1125,28 @@ function buildQEMUCommand(name: string, config: z.infer<typeof vmSchema>): strin
         );
     }
 
-    if (!isMacOS && cpuModel) {
-        cmd.push('-cpu', `"${cpuModel}"`);
+
+    if (!isMacOS && config.cpuModel) {
+        // For Windows VMs, append Hyper-V enlightenments to the CPU model
+        if (isWindowsISO) {
+            cmd.push('-cpu', `"${config.cpuModel},hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time"`);
+        } else {
+            cmd.push('-cpu', `"${config.cpuModel}"`);
+        }
+    } else if (!isMacOS) {
+        // Only set default if no CPU model is specified
+        const defaultCpuModel = process.env.CONTAINER_ENV ? 'qemu64' : 'host';
+        const cpuModel = isWindowsISO ? 'Nehalem' : defaultCpuModel;
+        if (isWindowsISO) {
+            cmd.push('-cpu', `"${cpuModel},hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time"`);
+        } else {
+            cmd.push('-cpu', `"${cpuModel}"`);
+        }
     }
 
     // CPU and memory configuration
     cmd.push(
         '-smp', config.cpu.toString(),
-        '-m', `${config.memory}M`
     );
 
     // KVM configuration
@@ -1045,6 +1196,75 @@ function buildQEMUCommand(name: string, config: z.infer<typeof vmSchema>): strin
         }
     } else {
         cmd.push('-drive', `file=${path.join(vmPath, 'disk.qcow2')},if=virtio,format=qcow2,media=disk`);
+    }
+
+    if (config.leechcore?.enabled) {
+        // const shmName = config.leechcore.shmName || `qemu-${name}-ram`;
+        // const qmpSocket = config.leechcore.qmpSocket || `/tmp/qmp-${name}.sock`;
+
+        // // Create QMP socket directory if it doesn't exist
+        // await fs.mkdir(path.dirname(qmpSocket), { recursive: true });
+
+        // // Set up shared memory configuration first
+        // cmd.push(
+        //     '-m', `${config.memory}M`,
+        //     '-object', `memory-backend-ram,id=pc.ram,size=${config.memory}M`,
+        //     '-machine', 'memory-backend=pc.ram',
+        //     '-object',
+        //     `memory-backend-file,id=mem,size=${config.memory}M,mem-path=/dev/shm/${shmName},share=on`,
+        //     '-qmp',
+        //     `unix:${qmpSocket},server,nowait`
+        // );
+
+        // // Ensure shared memory and QMP socket permissions before starting QEMU
+        // try {
+        //     await execAsync('sudo mkdir -p /dev/shm');
+        //     await execAsync('sudo chmod 777 /dev/shm');
+        //     await execAsync(`sudo rm -f /dev/shm/${shmName}`);  // Clean up any existing shared memory
+        //     await execAsync(`sudo rm -f ${qmpSocket}`);  // Clean up any existing socket
+        //     await execAsync(`sudo touch ${qmpSocket}`);
+        //     await execAsync(`sudo chmod 666 ${qmpSocket}`);
+        // } catch (error) {
+        //     console.warn('Failed to set permissions:', error);
+        // }
+        const shmName = config.leechcore.shmName || `qemu-${name}-ram`;
+        const qmpSocket = config.leechcore.qmpSocket || `/tmp/qmp-${name}.sock`;
+
+        // Create QMP socket directory if it doesn't exist
+        await fs.mkdir(path.dirname(qmpSocket), { recursive: true });
+
+        // Set up shared memory configuration first
+        cmd.push(
+            '-m', `${config.memory}M`,
+            '-object', `memory-backend-ram,id=pc.ram,size=${config.memory}M`,
+            '-machine', 'pc,memory-backend=pc.ram',
+            '-object', `memory-backend-file,id=mem,size=${config.memory}M,mem-path=/dev/shm/${shmName},share=on,prealloc=off`,
+            '-qmp', `unix:${qmpSocket},server,nowait`
+        );
+
+        // Ensure shared memory and QMP socket permissions before starting QEMU
+        try {
+            await execAsync('sudo mkdir -p /dev/shm');
+            await execAsync('sudo chmod 777 /dev/shm');
+
+            // Clean up and create shared memory file
+            await execAsync(`sudo rm -f /dev/shm/${shmName}`);
+            await execAsync(`sudo touch /dev/shm/${shmName}`);
+            await execAsync(`sudo chmod 666 /dev/shm/${shmName}`);
+
+            // Clean up and create QMP socket
+            await execAsync(`sudo rm -f ${qmpSocket}`);
+            await execAsync(`sudo touch ${qmpSocket}`);
+            await execAsync(`sudo chmod 666 ${qmpSocket}`);
+
+            // Create symlink for compatibility
+            await execAsync(`sudo ln -sf /dev/shm/${shmName} /dev/shm/qemu-${name}-ram`);
+        } catch (error) {
+            console.warn('Failed to set permissions:', error);
+        }
+    } else {
+        // If leechcore is not enabled, just add regular memory configuration
+        cmd.push('-m', `${config.memory}M`);
     }
 
     // Network configuration

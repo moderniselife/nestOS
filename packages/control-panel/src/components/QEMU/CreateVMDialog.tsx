@@ -37,6 +37,11 @@ interface Template {
   extraArgs?: string[];
   useKvm?: boolean;
   cpuModel?: string;
+  leechcore?: {
+    enabled: boolean;
+    shmName?: string;
+    qmpSocket?: string;
+  };
 }
 
 export function CreateVMDialog({ open, onClose }: CreateVMDialogProps): JSX.Element {
@@ -55,6 +60,11 @@ export function CreateVMDialog({ open, onClose }: CreateVMDialogProps): JSX.Elem
     useKvm: true,
     cpuModel: '',
     cpuSearchQuery: '',
+    leechcore: {
+      enabled: false,
+      shmName: '',
+      qmpSocket: '/tmp/qmp.sock',
+    },
   });
 
   const { data: templatesData } = useQuery({
@@ -142,6 +152,11 @@ export function CreateVMDialog({ open, onClose }: CreateVMDialogProps): JSX.Elem
         useKvm: true,
         cpuModel: '',
         cpuSearchQuery: '',
+        leechcore: {
+          enabled: false,
+          shmName: '',
+          qmpSocket: '/tmp/qmp.sock',
+        },
       });
     },
   });
@@ -386,6 +401,60 @@ export function CreateVMDialog({ open, onClose }: CreateVMDialogProps): JSX.Elem
               }
               label="Use KVM"
             />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.leechcore.enabled}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      leechcore: {
+                        ...formData.leechcore,
+                        enabled: e.target.checked,
+                      },
+                    })
+                  }
+                />
+              }
+              label="Enable LeechCore Memory Access"
+            />
+
+            {formData.leechcore.enabled && (
+              <>
+                <TextField
+                  label="Shared Memory Name"
+                  fullWidth
+                  value={formData.leechcore.shmName}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      leechcore: {
+                        ...formData.leechcore,
+                        shmName: e.target.value,
+                      },
+                    })
+                  }
+                  helperText="Name of the shared memory file in /dev/shm/"
+                  required={formData.leechcore.enabled}
+                />
+                <TextField
+                  label="QMP Socket Path"
+                  fullWidth
+                  value={formData.leechcore.qmpSocket}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      leechcore: {
+                        ...formData.leechcore,
+                        qmpSocket: e.target.value,
+                      },
+                    })
+                  }
+                  helperText="Path to QMP socket for memory range queries"
+                  required={formData.leechcore.enabled}
+                />
+              </>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

@@ -52,6 +52,11 @@ interface VM {
   useKvm?: boolean;
   cpuModel?: string;
   cpuSearchQuery?: string;
+  leechcore?: {
+    enabled: boolean;
+    shmName?: string;
+    qmpSocket?: string;
+  };
 }
 
 export default function QEMU(): JSX.Element {
@@ -307,30 +312,6 @@ export default function QEMU(): JSX.Element {
             <DialogTitle>Edit VM: {selectedVM.name}</DialogTitle>
             <DialogContent>
               <Stack spacing={3} sx={{ mt: 1 }}>
-                {/* <FormControl fullWidth>
-                  <InputLabel>CPU Model</InputLabel>
-                  <Select
-                    value={selectedVM.cpuModel || ''}
-                    label="CPU Model"
-                    onChange={(e) =>
-                      setSelectedVM({
-                        ...selectedVM,
-                        cpuModel: e.target.value,
-                      })
-                    }
-                  >
-                    <MenuItem value="">Default</MenuItem>
-                    {cpusData?.categories &&
-                      Object.entries(cpusData.categories).map(([category, cpus]) => [
-                        <ListSubheader key={category}>{category}</ListSubheader>,
-                        cpus.map((cpu: { model: string; description: string }) => (
-                          <MenuItem key={cpu.model} value={cpu.model}>
-                            {cpu.model} {cpu.description ? `- ${cpu.description}` : ''}
-                          </MenuItem>
-                        )),
-                      ])}
-                  </Select>
-                </FormControl> */}
                 <FormControl fullWidth>
                   <InputLabel>CPU Model</InputLabel>
                   <Select
@@ -494,6 +475,64 @@ export default function QEMU(): JSX.Element {
                   }
                   label="Use KVM"
                 />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={selectedVM.leechcore?.enabled || false}
+                      onChange={(e) =>
+                        setSelectedVM({
+                          ...selectedVM,
+                          leechcore: {
+                            enabled: e.target.checked,
+                            shmName: selectedVM.leechcore?.shmName || '',
+                            qmpSocket: selectedVM.leechcore?.qmpSocket || '',
+                          },
+                        })
+                      }
+                    />
+                  }
+                  label="Enable LeechCore Memory Access"
+                />
+
+                {selectedVM.leechcore?.enabled && (
+                  <>
+                    <TextField
+                      label="Shared Memory Name"
+                      fullWidth
+                      value={selectedVM.leechcore?.shmName || ''}
+                      onChange={(e) =>
+                        setSelectedVM({
+                          ...selectedVM,
+                          leechcore: {
+                            enabled: selectedVM.leechcore?.enabled || false,
+                            shmName: e.target.value,
+                            qmpSocket: selectedVM.leechcore?.qmpSocket || '',
+                          },
+                        })
+                      }
+                      helperText="Name of the shared memory file in /dev/shm/"
+                      required={selectedVM.leechcore?.enabled}
+                    />
+
+                    <TextField
+                      label="QMP Socket Path"
+                      fullWidth
+                      value={selectedVM.leechcore?.qmpSocket || ''}
+                      onChange={(e) =>
+                        setSelectedVM({
+                          ...selectedVM,
+                          leechcore: {
+                            enabled: selectedVM.leechcore?.enabled || false,
+                            shmName: selectedVM.leechcore?.shmName || '',
+                            qmpSocket: e.target.value,
+                          },
+                        })
+                      }
+                      helperText="Path to QMP socket for memory range queries"
+                      required={selectedVM.leechcore?.enabled}
+                    />
+                  </>
+                )}
               </Stack>
             </DialogContent>
             <DialogActions>

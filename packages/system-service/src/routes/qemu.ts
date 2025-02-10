@@ -1199,34 +1199,6 @@ async function buildQEMUCommand(name: string, config: z.infer<typeof vmSchema>):
     }
 
     if (config.leechcore?.enabled) {
-        // const shmName = config.leechcore.shmName || `qemu-${name}-ram`;
-        // const qmpSocket = config.leechcore.qmpSocket || `/tmp/qmp-${name}.sock`;
-
-        // // Create QMP socket directory if it doesn't exist
-        // await fs.mkdir(path.dirname(qmpSocket), { recursive: true });
-
-        // // Set up shared memory configuration first
-        // cmd.push(
-        //     '-m', `${config.memory}M`,
-        //     '-object', `memory-backend-ram,id=pc.ram,size=${config.memory}M`,
-        //     '-machine', 'memory-backend=pc.ram',
-        //     '-object',
-        //     `memory-backend-file,id=mem,size=${config.memory}M,mem-path=/dev/shm/${shmName},share=on`,
-        //     '-qmp',
-        //     `unix:${qmpSocket},server,nowait`
-        // );
-
-        // // Ensure shared memory and QMP socket permissions before starting QEMU
-        // try {
-        //     await execAsync('sudo mkdir -p /dev/shm');
-        //     await execAsync('sudo chmod 777 /dev/shm');
-        //     await execAsync(`sudo rm -f /dev/shm/${shmName}`);  // Clean up any existing shared memory
-        //     await execAsync(`sudo rm -f ${qmpSocket}`);  // Clean up any existing socket
-        //     await execAsync(`sudo touch ${qmpSocket}`);
-        //     await execAsync(`sudo chmod 666 ${qmpSocket}`);
-        // } catch (error) {
-        //     console.warn('Failed to set permissions:', error);
-        // }
         const shmName = config.leechcore.shmName || `qemu-${name}-ram`;
         const qmpSocket = config.leechcore.qmpSocket || `/tmp/qmp-${name}.sock`;
 

@@ -1,6 +1,6 @@
 {
   "name": "nestos",
-  "version": "1.0.1.0",
+  "version": "1.0.2.0",
   "description": "NestOS - A modern, user-friendly home server operating system",
   "private": true,
   "packageManager": "npm@10.8.2",

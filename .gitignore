@@ -10,8 +10,6 @@ build/
 *.img
 
 # Development
-.env
-.env.local
 .env.development.local
 .env.test.local
 .env.production.local
@@ -72,3 +70,4 @@ packages/iso-builder/output/nestos
 packages/system-service/plugins
 packages/system-service/data/user-settings.json
 packages/system-service/data/appearance.json
+config.bat
